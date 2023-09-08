@@ -196,7 +196,7 @@ func (c *AdmissionController) processPod(req *admissionv1.AdmissionRequest, name
 	patch = updateSchedulerName(patch)
 
 	if c.shouldLabelNamespace(namespace) {
-		patch = c.updateLabels(namespace, &pod, patch)
+		patch = c.updateApplicationInfo(namespace, &pod, patch)
 		patch = c.updatePreemptionInfo(&pod, patch)
 	} else {
 		patch = disableYuniKorn(namespace, &pod, patch)
@@ -432,6 +432,80 @@ func (c *AdmissionController) updateLabels(namespace string, pod *v1.Pod, patch 
 
 	return patch
 }
+
+func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Pod, patch []common.PatchOperation) []common.PatchOperation {
+	log.Logger().Info("updating pod application annotations",
+		zap.String("podName", pod.Name),
+		zap.String("generateName", pod.GenerateName),
+		zap.String("namespace", namespace),
+		zap.Any("labels", pod.Labels),
+		zap.Any("annotations", pod.Annotations))
+
+	result := make(map[string]string)
+
+	appID := getApplicationIDFromPod(pod)
+	if appID == "" {
+		// if app id not exist, generate one
+		// for each namespace, we group unnamed pods to one single app
+		// application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
+		appID := generateAppID(namespace, pod, c.conf.GetGenerateUniqueAppIds())
+		result[constants.AnnotationApplicationID] = appID
+
+		// if we generate an app ID, disable state-aware scheduling for this app
+		result[constants.AnnotationDisableStateAware] = "true"
+	}
+
+	// if app id not in pod annotation, add it
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationIgnoreApplication); value == "" {
+		result[constants.AnnotationApplicationID] = appID
+	}
+
+	// if queue name not in pod annotation, add it
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value == "" {
+		queueName := getQueueNameFromPod(pod)
+		if queueName == "" {
+			// for undefined configuration, am_conf will add 'root.default' to retain existing behavior
+			// if a custom name is configured for default queue, it will be used instead of root.default
+			queueName = c.conf.GetDefaultQueueName()
+		}
+		result[constants.AnnotationQueueName] = queueName
+	}
+
+	if len(result) != 0 {
+		patch = append(patch, common.PatchOperation{
+			Op:    "add",
+			Path:  "/metadata/annotations",
+			Value: result,
+		})
+	}
+
+	return patch
+}
+
+// func (c *AdmissionController) updateQueueNameInfo(pod *v1.Pod, patch []common.PatchOperation) []common.PatchOperation {
+// 	result := make(map[string]string)
+
+// 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value == "" {
+// 		queueName := getQueueNameFromPod(pod)
+// 		if queueName == "" {
+// 			// for undefined configuration, am_conf will add 'root.default' to retain existing behavior
+// 			// if a custom name is configured for default queue, it will be used instead of root.default
+// 			queueName = c.conf.GetDefaultQueueName()
+// 		}
+
+// 		result[constants.AnnotationQueueName] = queueName
+// 	}
+
+// 	if len(result) != 0 {
+// 		patch = append(patch, common.PatchOperation{
+// 			Op:    "add",
+// 			Path:  "/metadata/annotations",
+// 			Value: result,
+// 		})
+// 	}
+
+// 	return patch
+// }
 
 func disableYuniKorn(namespace string, pod *v1.Pod, patch []common.PatchOperation) []common.PatchOperation {
 	log.Logger().Info("disabling yunikorn on pod since namespace is set to no-label",

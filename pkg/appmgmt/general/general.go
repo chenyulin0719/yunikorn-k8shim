@@ -87,20 +87,30 @@ func (os *Manager) Stop() {
 }
 
 func isStateAwareDisabled(pod *v1.Pod) bool {
-	value := utils.GetPodLabelValue(pod, constants.LabelDisableStateAware)
-	if value == "" {
-		return false
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationDisableStateAware); value != "" {
+		result, err := strconv.ParseBool(value)
+		if err != nil {
+			log.Logger().Debug("unable to parse anotation for pod",
+				zap.String("namespace", pod.Namespace),
+				zap.String("name", pod.Name),
+				zap.String("annotation", constants.AnnotationDisableStateAware),
+				zap.Error(err))
+			return false
+		}
+		return result
+	} else if value := utils.GetPodLabelValue(pod, constants.LabelDisableStateAware); value != "" {
+		result, err := strconv.ParseBool(value)
+		if err != nil {
+			log.Logger().Debug("unable to parse label for pod",
+				zap.String("namespace", pod.Namespace),
+				zap.String("name", pod.Name),
+				zap.String("label", constants.LabelDisableStateAware),
+				zap.Error(err))
+			return false
+		}
+		return result
 	}
-	result, err := strconv.ParseBool(value)
-	if err != nil {
-		log.Logger().Debug("unable to parse label for pod",
-			zap.String("namespace", pod.Namespace),
-			zap.String("name", pod.Name),
-			zap.String("label", constants.LabelDisableStateAware),
-			zap.Error(err))
-		return false
-	}
-	return result
+	return false
 }
 
 func getOwnerReference(pod *v1.Pod) []metav1.OwnerReference {

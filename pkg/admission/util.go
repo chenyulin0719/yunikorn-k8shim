@@ -98,3 +98,28 @@ func generateAppID(namespace string, pod *v1.Pod, generateUniqueAppIds bool) str
 	appID := fmt.Sprintf("%.63s", generatedID)
 	return appID
 }
+
+func getApplicationIDFromPod(pod *v1.Pod) string {
+	// if existing annotation exist, it takes priority over everything else
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationApplicationID); value != "" {
+		return value
+	}
+	if value := utils.GetPodLabelValue(pod, constants.LabelApplicationID); value != "" {
+		return value
+	}
+	// application ID can be defined in Spark Operator's label
+	if value := utils.GetPodLabelValue(pod, constants.SparkLabelAppID); value != "" {
+		return value
+	}
+	return ""
+}
+
+func getQueueNameFromPod(pod *v1.Pod) string {
+	// if existing annotation exist, it takes priority over everything else
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value != "" {
+		return value
+	} else if value := utils.GetPodLabelValue(pod, constants.LabelQueueName); value != "" {
+		return value
+	}
+	return ""
+}
