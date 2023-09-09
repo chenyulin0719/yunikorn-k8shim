@@ -441,7 +441,7 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 		zap.Any("labels", pod.Labels),
 		zap.Any("annotations", pod.Annotations))
 
-	result := make(map[string]string)
+	annotations := make(map[string]string)
 
 	appID := getApplicationIDFromPod(pod)
 	if appID == "" {
@@ -449,15 +449,15 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 		// for each namespace, we group unnamed pods to one single app
 		// application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
 		appID := generateAppID(namespace, pod, c.conf.GetGenerateUniqueAppIds())
-		result[constants.AnnotationApplicationID] = appID
+		annotations[constants.AnnotationApplicationID] = appID
 
 		// if we generate an app ID, disable state-aware scheduling for this app
-		result[constants.AnnotationDisableStateAware] = "true"
+		annotations[constants.AnnotationDisableStateAware] = "true"
 	}
 
 	// if app id not in pod annotation, add it
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationIgnoreApplication); value == "" {
-		result[constants.AnnotationApplicationID] = appID
+		annotations[constants.AnnotationApplicationID] = appID
 	}
 
 	// if queue name not in pod annotation, add it
@@ -468,14 +468,14 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 			// if a custom name is configured for default queue, it will be used instead of root.default
 			queueName = c.conf.GetDefaultQueueName()
 		}
-		result[constants.AnnotationQueueName] = queueName
+		annotations[constants.AnnotationQueueName] = queueName
 	}
 
-	if len(result) != 0 {
+	if len(annotations) != 0 {
 		patch = append(patch, common.PatchOperation{
 			Op:    "add",
 			Path:  "/metadata/annotations",
-			Value: result,
+			Value: annotations,
 		})
 	}
 
