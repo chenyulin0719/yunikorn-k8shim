@@ -90,7 +90,7 @@ func isStateAwareDisabled(pod *v1.Pod) bool {
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationDisableStateAware); value != "" {
 		result, err := strconv.ParseBool(value)
 		if err != nil {
-			log.Logger().Debug("unable to parse anotation for pod",
+			log.Logger().Debug("unable to parse annotation for pod",
 				zap.String("namespace", pod.Namespace),
 				zap.String("name", pod.Name),
 				zap.String("annotation", constants.AnnotationDisableStateAware),
