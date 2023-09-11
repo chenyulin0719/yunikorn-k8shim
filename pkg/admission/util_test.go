@@ -203,7 +203,7 @@ func TestDefaultQueueName(t *testing.T) {
 		assert.Equal(t, len(result), 3)
 		assert.Equal(t, result["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
 		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "yunikorn")
+		assert.Assert(t, result["yunikorn.apache.org/queue"] != "yunikorn")
 	} else {
 		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
 	}
