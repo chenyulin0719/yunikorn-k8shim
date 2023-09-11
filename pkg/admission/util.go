@@ -41,7 +41,7 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 		//		application ID convention: ${NAMESPACE}-${GENERATED_UUID}
 		// else
 		// 		application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
-		appID := generateAppID(namespace, generateUniqueAppIds)
+		appID = generateAppID(namespace, generateUniqueAppIds)
 		annotations[constants.AnnotationApplicationID] = appID
 
 		// if we generate an app ID, disable state-aware scheduling for this app
