@@ -94,10 +94,10 @@ func IsAssignedPod(pod *v1.Pod) bool {
 
 func GetQueueNameFromPod(pod *v1.Pod) string {
 	queueName := constants.ApplicationDefaultQueue
-	if an := GetPodLabelValue(pod, constants.LabelQueueName); an != "" {
-		queueName = an
-	} else if qu := GetPodAnnotationValue(pod, constants.AnnotationQueueName); qu != "" {
-		queueName = qu
+	if value := GetPodAnnotationValue(pod, constants.AnnotationQueueName); value != "" {
+		queueName = value
+	} else if value := GetPodLabelValue(pod, constants.LabelQueueName); value != "" {
+		queueName = value
 	}
 	return queueName
 }

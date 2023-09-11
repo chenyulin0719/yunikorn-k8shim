@@ -92,11 +92,12 @@ func newPlaceholder(placeholderName string, app *Application, taskGroup interfac
 			Name:      placeholderName,
 			Namespace: app.tags[constants.AppTagNamespace],
 			Labels: utils.MergeMaps(taskGroup.Labels, map[string]string{
-				constants.LabelApplicationID:   app.GetApplicationID(),
-				constants.LabelQueueName:       app.GetQueue(),
 				constants.LabelPlaceholderFlag: "true",
 			}),
-			Annotations:     annotations,
+			Annotations: utils.MergeMaps(annotations, map[string]string{
+				constants.AnnotationApplicationID: app.GetApplicationID(),
+				constants.AnnotationQueueName:     app.GetQueue(),
+			}),
 			OwnerReferences: ownerRefs,
 		},
 		Spec: v1.PodSpec{

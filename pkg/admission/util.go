@@ -31,38 +31,50 @@ import (
 	"github.com/apache/yunikorn-k8shim/pkg/log"
 )
 
-func updatePodLabel(pod *v1.Pod, namespace string, generateUniqueAppIds bool, defaultQueueName string) map[string]string {
-	existingLabels := pod.Labels
+func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, generateUniqueAppIds bool, defaultQueueName string) map[string]string {
 	result := make(map[string]string)
-	for k, v := range existingLabels {
+	existingAnnotations := pod.Annotations
+	for k, v := range existingAnnotations {
 		result[k] = v
 	}
-
-	sparkAppID := utils.GetPodLabelValue(pod, constants.SparkLabelAppID)
-	appID := utils.GetPodLabelValue(pod, constants.LabelApplicationID)
-	if sparkAppID == "" && appID == "" {
+	appID := getApplicationIDFromPod(pod)
+	if appID == "" {
 		// if app id not exist, generate one
 		// for each namespace, we group unnamed pods to one single app - if GenerateUniqueAppId is not set
 		// if GenerateUniqueAppId:
 		//		application ID convention: ${NAMESPACE}-${GENERATED_UUID}
 		// else
 		// 		application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
-		generatedID := generateAppID(namespace, generateUniqueAppIds)
-		result[constants.LabelApplicationID] = generatedID
+		appID = generateAppID(namespace, generateUniqueAppIds)
+		result[constants.AnnotationApplicationID] = appID
 
 		// if we generate an app ID, disable state-aware scheduling for this app
-		if _, ok := existingLabels[constants.LabelDisableStateAware]; !ok {
-			result[constants.LabelDisableStateAware] = "true"
+		disableStateAware := "true"
+		if value := utils.GetPodLabelValue(pod, constants.LabelDisableStateAware); value != "" {
+			disableStateAware = value
 		}
+		result[constants.AnnotationDisableStateAware] = disableStateAware
 	}
 
-	// if existing label exist, it takes priority over everything else
-	if _, ok := existingLabels[constants.LabelQueueName]; !ok {
+	// if app id not in pod annotation, add it
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationIgnoreApplication); value == "" {
+		result[constants.AnnotationApplicationID] = appID
+	}
+
+	queueName := getQueueNameFromPod(pod)
+	if queueName == "" {
 		// if defaultQueueName is "", skip adding default queue name to the pod labels
 		if defaultQueueName != "" {
 			// for undefined configuration, am_conf will add 'root.default' to retain existing behavior
 			// if a custom name is configured for default queue, it will be used instead of root.default
-			result[constants.LabelQueueName] = defaultQueueName
+			queueName = defaultQueueName
+		}
+	}
+
+	// if queue name not in pod annotation, add it
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value == "" {
+		if queueName != "" {
+			result[constants.AnnotationQueueName] = queueName
 		}
 	}
 
@@ -105,4 +117,28 @@ func generateAppID(namespace string, generateUniqueAppIds bool) string {
 	}
 
 	return fmt.Sprintf("%.63s", generatedID)
+}
+
+func getApplicationIDFromPod(pod *v1.Pod) string {
+	// if existing annotation exist, it takes priority over everything else
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationApplicationID); value != "" {
+		return value
+	} else if value := utils.GetPodLabelValue(pod, constants.LabelApplicationID); value != "" {
+		return value
+	}
+	// application ID can be defined in Spark label
+	if value := utils.GetPodLabelValue(pod, constants.SparkLabelAppID); value != "" {
+		return value
+	}
+	return ""
+}
+
+func getQueueNameFromPod(pod *v1.Pod) string {
+	// if existing annotation exist, it takes priority over everything else
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value != "" {
+		return value
+	} else if value := utils.GetPodLabelValue(pod, constants.LabelQueueName); value != "" {
+		return value
+	}
+	return ""
 }

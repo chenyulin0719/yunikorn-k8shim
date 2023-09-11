@@ -649,3 +649,45 @@ func (temp Template) InjectPod() *v1.Pod {
 	}
 	return tempPod
 }
+
+func TestIsStateAwareDisabled(t *testing.T) {
+	// test empty pod
+	pod1 := &v1.Pod{}
+	assert.Equal(t, isStateAwareDisabled(pod1), false)
+
+	// test annotations take precedence over labels
+	pod2 := &v1.Pod{
+		ObjectMeta: apis.ObjectMeta{
+			Labels: map[string]string{
+				constants.LabelDisableStateAware: "false",
+			},
+			Annotations: map[string]string{
+				constants.AnnotationDisableStateAware: "true",
+			},
+		},
+	}
+	assert.Equal(t, isStateAwareDisabled(pod2), true)
+
+	// test pod with label only
+	pod3 := &v1.Pod{
+		ObjectMeta: apis.ObjectMeta{
+			Labels: map[string]string{
+				constants.LabelDisableStateAware: "true",
+			},
+		},
+	}
+	assert.Equal(t, isStateAwareDisabled(pod3), true)
+
+	// test pod with annotation unable to be parsed
+	pod4 := &v1.Pod{
+		ObjectMeta: apis.ObjectMeta{
+			Labels: map[string]string{
+				constants.LabelDisableStateAware: "true",
+			},
+			Annotations: map[string]string{
+				constants.AnnotationDisableStateAware: "a string that cannot be converted to a boolean",
+			},
+		},
+	}
+	assert.Equal(t, isStateAwareDisabled(pod4), false)
+}
