@@ -119,8 +119,7 @@ func getApplicationIDFromPod(pod *v1.Pod) string {
 	// if existing annotation exist, it takes priority over everything else
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationApplicationID); value != "" {
 		return value
-	}
-	if value := utils.GetPodLabelValue(pod, constants.LabelApplicationID); value != "" {
+	} else if value := utils.GetPodLabelValue(pod, constants.LabelApplicationID); value != "" {
 		return value
 	}
 	// application ID can be defined in Spark Operator label
