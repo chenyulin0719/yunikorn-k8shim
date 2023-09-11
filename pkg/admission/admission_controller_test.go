@@ -859,7 +859,7 @@ func annotations(t *testing.T, patch []byte) map[string]interface{} {
 			for key, value := range patchValue {
 				// there should not be duplicate key across multiple patches.
 				if oldValue, exists := annotations[key]; exists {
-					t.Errorf("Annotation \"%s/%v\" has already been added in previous patch. Shouldn't insert the new value: \"%v\".", key, oldValue, value)
+					t.Errorf("Annotation \"%s\" with value \"%v\" has already been added in previous patch. Shouldn't patch a new value: \"%v\".", key, oldValue, value)
 				}
 				annotations[key] = value
 			}
