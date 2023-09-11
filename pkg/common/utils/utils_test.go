@@ -743,7 +743,7 @@ func TestGetQueueNameFromPod(t *testing.T) {
 					Annotations: map[string]string{constants.AnnotationQueueName: queueInAnnotation},
 				},
 			},
-			expectedQueue: queueInLabel,
+			expectedQueue: queueInAnnotation,
 		},
 		{
 			name: "Without queue label and annotation",
