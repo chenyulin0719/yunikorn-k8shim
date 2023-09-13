@@ -122,7 +122,7 @@ func getApplicationIDFromPod(pod *v1.Pod) string {
 	} else if value := utils.GetPodLabelValue(pod, constants.LabelApplicationID); value != "" {
 		return value
 	}
-	// application ID can be defined in Spark Operator label
+	// application ID can be defined in Spark label
 	if value := utils.GetPodLabelValue(pod, constants.SparkLabelAppID); value != "" {
 		return value
 	}
