@@ -425,6 +425,18 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 
 	annotations := getAnnotationsForApplicationInfoUpdate(pod, namespace, c.conf.GetGenerateUniqueAppIds(), c.conf.GetDefaultQueueName())
 
+	// check for an existing patch on annotations and update it
+	for _, p := range patch {
+		if p.Op == "add" && p.Path == "/metadata/annotations" {
+			if existingAnnotations, ok := p.Value.(map[string]string); ok {
+				for k, v := range annotations {
+					existingAnnotations[k] = v
+				}
+				return patch
+			}
+		}
+	}
+
 	if len(annotations) != 0 {
 		patch = append(patch, common.PatchOperation{
 			Op:    "add",
