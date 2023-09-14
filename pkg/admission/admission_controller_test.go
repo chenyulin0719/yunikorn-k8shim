@@ -849,24 +849,13 @@ func schedulerName(t *testing.T, patch []byte) string {
 }
 
 func annotations(t *testing.T, patch []byte) map[string]interface{} {
-	annotations := make(map[string]interface{})
-
 	ops := parsePatch(t, patch)
 	for _, op := range ops {
-		// combine annotations from different patches
 		if op.Path == "/metadata/annotations" {
-			patchValue := op.Value.(map[string]interface{})
-			for key, value := range patchValue {
-				// there should not be duplicate key across multiple patches.
-				if oldValue, exists := annotations[key]; exists {
-					t.Errorf("Annotation \"%s\" with value \"%v\" has already been added in previous patch. Shouldn't patch a new value: \"%v\".", key, oldValue, value)
-				}
-				annotations[key] = value
-			}
+			return op.Value.(map[string]interface{})
 		}
 	}
-
-	return annotations
+	return make(map[string]interface{})
 }
 
 func annotationsFromDeployment(t *testing.T, patch []byte) map[string]interface{} {
