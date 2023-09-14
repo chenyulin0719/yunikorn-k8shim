@@ -115,7 +115,7 @@ func TestUpdateLabels(t *testing.T) {
 
 	assert.Equal(t, len(patch), 1)
 	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations")
+	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
 		assert.Equal(t, len(updatedMap), 2)
 		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
@@ -151,7 +151,7 @@ func TestUpdateLabels(t *testing.T) {
 
 	assert.Equal(t, len(patch), 1)
 	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations")
+	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
 		assert.Equal(t, len(updatedMap), 3)
 		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.abc")
@@ -183,7 +183,7 @@ func TestUpdateLabels(t *testing.T) {
 
 	assert.Equal(t, len(patch), 1)
 	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations")
+	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
 		assert.Equal(t, len(updatedMap), 3)
 		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
@@ -212,7 +212,7 @@ func TestUpdateLabels(t *testing.T) {
 
 	assert.Equal(t, len(patch), 1)
 	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations")
+	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
 		assert.Equal(t, len(updatedMap), 3)
 		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
@@ -239,7 +239,7 @@ func TestUpdateLabels(t *testing.T) {
 
 	assert.Equal(t, len(patch), 1)
 	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations")
+	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
 		assert.Equal(t, len(updatedMap), 3)
 		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
