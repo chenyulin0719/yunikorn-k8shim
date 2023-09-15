@@ -32,7 +32,11 @@ import (
 )
 
 func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, generateUniqueAppIds bool, defaultQueueName string) map[string]string {
-	annotations := make(map[string]string)
+	result := make(map[string]string)
+	existingAnnotations := pod.Annotations
+	for k, v := range existingAnnotations {
+		result[k] = v
+	}
 	appID := getApplicationIDFromPod(pod)
 	if appID == "" {
 		// if app id not exist, generate one
@@ -42,19 +46,19 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 		// else
 		// 		application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
 		appID = generateAppID(namespace, generateUniqueAppIds)
-		annotations[constants.AnnotationApplicationID] = appID
+		result[constants.AnnotationApplicationID] = appID
 
 		// if we generate an app ID, disable state-aware scheduling for this app
 		disableStateAware := "true"
 		if value := utils.GetPodLabelValue(pod, constants.LabelDisableStateAware); value != "" {
 			disableStateAware = value
 		}
-		annotations[constants.AnnotationDisableStateAware] = disableStateAware
+		result[constants.AnnotationDisableStateAware] = disableStateAware
 	}
 
 	// if app id not in pod annotation, add it
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationIgnoreApplication); value == "" {
-		annotations[constants.AnnotationApplicationID] = appID
+		result[constants.AnnotationApplicationID] = appID
 	}
 
 	queueName := getQueueNameFromPod(pod)
@@ -70,11 +74,11 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 	// if queue name not in pod annotation, add it
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value == "" {
 		if queueName != "" {
-			annotations[constants.AnnotationQueueName] = queueName
+			result[constants.AnnotationQueueName] = queueName
 		}
 	}
 
-	return annotations
+	return result
 }
 
 func updatePodLabel(pod *v1.Pod, namespace string, generateUniqueAppIds bool, defaultQueueName string) map[string]string {

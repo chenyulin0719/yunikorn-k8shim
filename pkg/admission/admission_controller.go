@@ -196,8 +196,7 @@ func (c *AdmissionController) processPod(req *admissionv1.AdmissionRequest, name
 	patch = updateSchedulerName(patch)
 
 	if c.shouldLabelNamespace(namespace) {
-		// patch = c.updateApplicationInfo(namespace, &pod, patch)
-		patch = c.updateLabels(namespace, &pod, patch)
+		patch = c.updateApplicationInfo(namespace, &pod, patch)
 		patch = c.updatePreemptionInfo(&pod, patch)
 	} else {
 		patch = disableYuniKorn(namespace, &pod, patch)
