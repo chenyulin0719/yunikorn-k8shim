@@ -196,7 +196,7 @@ func (c *AdmissionController) processPod(req *admissionv1.AdmissionRequest, name
 	patch = updateSchedulerName(patch)
 
 	if c.shouldLabelNamespace(namespace) {
-		patch = c.updateApplicationInfo(namespace, &pod, patch)
+		patch = c.updateLabels(namespace, &pod, patch)
 		patch = c.updatePreemptionInfo(&pod, patch)
 	} else {
 		patch = disableYuniKorn(namespace, &pod, patch)
@@ -415,6 +415,24 @@ func (c *AdmissionController) updatePreemptionInfo(pod *v1.Pod, patch []common.P
 	return patch
 }
 
+func (c *AdmissionController) updateLabels(namespace string, pod *v1.Pod, patch []common.PatchOperation) []common.PatchOperation {
+	log.Log(log.Admission).Info("updating pod labels",
+		zap.String("podName", pod.Name),
+		zap.String("generateName", pod.GenerateName),
+		zap.String("namespace", namespace),
+		zap.Any("labels", pod.Labels))
+
+	result := updatePodLabel(pod, namespace, c.conf.GetGenerateUniqueAppIds(), c.conf.GetDefaultQueueName())
+
+	patch = append(patch, common.PatchOperation{
+		Op:    "add",
+		Path:  "/metadata/labels",
+		Value: result,
+	})
+
+	return patch
+}
+
 func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Pod, patch []common.PatchOperation) []common.PatchOperation {
 	log.Log(log.Admission).Info("updating pod application annotations",
 		zap.String("podName", pod.Name),
@@ -445,33 +463,29 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 		})
 	}
 
-	// annotations[constants.AnnotationApplicationID]
-	// annotations[constants.AnnotationDisableStateAware]
-	// annotations[constants.AnnotationQueueName] = queueName
+	// lables := make(map[string]string)
+	// existingLabels := pod.Labels
+	// for k, v := range existingLabels {
+	// 	lables[k] = v
+	// }
 
-	lables := make(map[string]string)
-	existingLabels := pod.Labels
-	for k, v := range existingLabels {
-		lables[k] = v
-	}
+	// if v, ok := annotations[constants.AnnotationApplicationID]; ok {
+	// 	lables[constants.LabelApplicationID] = v
+	// }
 
-	if v, ok := annotations[constants.AnnotationApplicationID]; ok {
-		lables[constants.LabelApplicationID] = v
-	}
+	// if v, ok := annotations[constants.AnnotationDisableStateAware]; ok {
+	// 	lables[constants.LabelDisableStateAware] = v
+	// }
 
-	if v, ok := annotations[constants.AnnotationDisableStateAware]; ok {
-		lables[constants.LabelDisableStateAware] = v
-	}
+	// if v, ok := annotations[constants.AnnotationQueueName]; ok {
+	// 	lables[constants.LabelQueueName] = v
+	// }
 
-	if v, ok := annotations[constants.AnnotationQueueName]; ok {
-		lables[constants.LabelQueueName] = v
-	}
-
-	patch = append(patch, common.PatchOperation{
-		Op:    "add",
-		Path:  "/metadata/labels",
-		Value: lables,
-	})
+	// patch = append(patch, common.PatchOperation{
+	// 	Op:    "add",
+	// 	Path:  "/metadata/labels",
+	// 	Value: lables,
+	// })
 
 	return patch
 }
