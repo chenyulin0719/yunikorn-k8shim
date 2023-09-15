@@ -77,6 +77,44 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 	return annotations
 }
 
+func updatePodLabel(pod *v1.Pod, namespace string, generateUniqueAppIds bool, defaultQueueName string) map[string]string {
+	existingLabels := pod.Labels
+	result := make(map[string]string)
+	for k, v := range existingLabels {
+		result[k] = v
+	}
+
+	sparkAppID := utils.GetPodLabelValue(pod, constants.SparkLabelAppID)
+	appID := utils.GetPodLabelValue(pod, constants.LabelApplicationID)
+	if sparkAppID == "" && appID == "" {
+		// if app id not exist, generate one
+		// for each namespace, we group unnamed pods to one single app - if GenerateUniqueAppId is not set
+		// if GenerateUniqueAppId:
+		//		application ID convention: ${NAMESPACE}-${GENERATED_UUID}
+		// else
+		// 		application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
+		generatedID := generateAppID(namespace, generateUniqueAppIds)
+		result[constants.LabelApplicationID] = generatedID
+
+		// if we generate an app ID, disable state-aware scheduling for this app
+		if _, ok := existingLabels[constants.LabelDisableStateAware]; !ok {
+			result[constants.LabelDisableStateAware] = "true"
+		}
+	}
+
+	// if existing label exist, it takes priority over everything else
+	if _, ok := existingLabels[constants.LabelQueueName]; !ok {
+		// if defaultQueueName is "", skip adding default queue name to the pod labels
+		if defaultQueueName != "" {
+			// for undefined configuration, am_conf will add 'root.default' to retain existing behavior
+			// if a custom name is configured for default queue, it will be used instead of root.default
+			result[constants.LabelQueueName] = defaultQueueName
+		}
+	}
+
+	return result
+}
+
 func updatePodAnnotation(pod *v1.Pod, key string, value string) map[string]string {
 	existingAnnotations := pod.Annotations
 	result := make(map[string]string)
