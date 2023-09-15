@@ -445,6 +445,34 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 		})
 	}
 
+	// annotations[constants.AnnotationApplicationID]
+	// annotations[constants.AnnotationDisableStateAware]
+	// annotations[constants.AnnotationQueueName] = queueName
+
+	lables := make(map[string]string)
+	existingLabels := pod.Labels
+	for k, v := range existingLabels {
+		lables[k] = v
+	}
+
+	if v, ok := annotations[constants.AnnotationApplicationID]; ok {
+		lables[constants.LabelApplicationID] = v
+	}
+
+	if v, ok := annotations[constants.AnnotationDisableStateAware]; ok {
+		lables[constants.LabelDisableStateAware] = v
+	}
+
+	if v, ok := annotations[constants.AnnotationQueueName]; ok {
+		lables[constants.LabelQueueName] = v
+	}
+
+	patch = append(patch, common.PatchOperation{
+		Op:    "add",
+		Path:  "/metadata/labels",
+		Value: lables,
+	})
+
 	return patch
 }
 
