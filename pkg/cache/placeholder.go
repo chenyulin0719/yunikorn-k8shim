@@ -51,7 +51,8 @@ func newPlaceholder(placeholderName string, app *Application, taskGroup interfac
 	// Here the owner reference is always the originator pod
 	ownerRefs := app.getPlaceholderOwnerReferences()
 	annotations := utils.MergeMaps(taskGroup.Annotations, map[string]string{
-		constants.AnnotationTaskGroupName: taskGroup.Name,
+		constants.AnnotationPlaceholderFlag: "true",
+		constants.AnnotationTaskGroupName:   taskGroup.Name,
 	})
 
 	// Add "yunikorn.apache.org/task-groups" annotation to the placeholder to aid recovery
@@ -92,9 +93,8 @@ func newPlaceholder(placeholderName string, app *Application, taskGroup interfac
 			Namespace: app.tags[constants.AppTagNamespace],
 			Labels:    taskGroup.Labels,
 			Annotations: utils.MergeMaps(annotations, map[string]string{
-				constants.AnnotationApplicationID:   app.GetApplicationID(),
-				constants.AnnotationQueueName:       app.GetQueue(),
-				constants.AnnotationPlaceholderFlag: "true",
+				constants.AnnotationApplicationID: app.GetApplicationID(),
+				constants.AnnotationQueueName:     app.GetQueue(),
 			}),
 			OwnerReferences: ownerRefs,
 		},
