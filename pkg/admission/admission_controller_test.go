@@ -51,7 +51,7 @@ const (
 )
 
 // nolint: funlen
-func TestUpdateLabels(t *testing.T) {
+func TestUpdateApplicationInfo(t *testing.T) {
 	// verify when appId/queue are not given,
 	// we patch it correctly
 	var patch []common.PatchOperation
@@ -242,6 +242,40 @@ func TestUpdateLabels(t *testing.T) {
 	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
 		assert.Equal(t, len(updatedMap), 3)
+		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
+		assert.Equal(t, updatedMap["yunikorn.apache.org/disable-state-aware"], "true")
+		assert.Equal(t, strings.HasPrefix(updatedMap["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
+	} else {
+		t.Fatal("patch info content is not as expected")
+	}
+
+	// should combine with the existing patch, which has the 'add' operation and the '/metadata/annotations' path.
+	patch = make([]common.PatchOperation, 0)
+	patch = append(patch, common.PatchOperation{
+		Op:   "add",
+		Path: "/metadata/annotations",
+		Value: map[string]string{
+			"existingAnnotationKey": "existingAnnotationValue",
+		},
+	})
+	pod = &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{},
+		Spec:       v1.PodSpec{},
+		Status:     v1.PodStatus{},
+	}
+
+	patch = c.updateApplicationInfo("default", pod, patch)
+
+	assert.Equal(t, len(patch), 1)
+	assert.Equal(t, patch[0].Op, "add")                           //nolint:gosec
+	assert.Equal(t, patch[0].Path, "/metadata/annotations")       //nolint:gosec
+	if updatedMap, ok := patch[0].Value.(map[string]string); ok { //nolint:gosec
+		assert.Equal(t, len(updatedMap), 4)
+		assert.Equal(t, updatedMap["existingAnnotationKey"], "existingAnnotationValue")
 		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
 		assert.Equal(t, updatedMap["yunikorn.apache.org/disable-state-aware"], "true")
 		assert.Equal(t, strings.HasPrefix(updatedMap["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
