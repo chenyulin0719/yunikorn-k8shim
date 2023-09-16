@@ -61,18 +61,13 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 		}
 	}
 
-	queueName := utils.GetQueueNameFromPod(pod, "")
-	if queueName == "" {
-		// if defaultQueueName is "", skip adding default queue name to the pod labels
-		if defaultQueueName != "" {
-			// for undefined configuration, am_conf will add 'root.default' to retain existing behavior
-			// if a custom name is configured for default queue, it will be used instead of root.default
-			queueName = defaultQueueName
-		}
-	}
+	// for undefined configuration, am_conf will add 'root.default' as default queue name
+	// if a custom name is configured for default queue, it will be used instead of root.default
+	queueName := utils.GetQueueNameFromPod(pod, defaultQueueName)
 
 	// if queue name was not in pod annotations, add it to annotations.
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value == "" {
+		// if defaultQueueName is "", skip adding default queue name to the pod annotation
 		if queueName != "" {
 			result[constants.AnnotationQueueName] = queueName
 		}
