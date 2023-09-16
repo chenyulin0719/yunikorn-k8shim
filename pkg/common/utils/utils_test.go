@@ -756,7 +756,7 @@ func TestGetQueueNameFromPod(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			queue := GetQueueNameFromPod(tc.pod)
+			queue := GetQueueNameFromPod(tc.pod, constants.ApplicationDefaultQueue)
 			assert.Equal(t, queue, tc.expectedQueue)
 		})
 	}

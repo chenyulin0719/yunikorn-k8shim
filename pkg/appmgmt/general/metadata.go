@@ -120,7 +120,7 @@ func getAppMetadata(pod *v1.Pod, recovery bool) (interfaces.ApplicationMetadata,
 
 	return interfaces.ApplicationMetadata{
 		ApplicationID:              appID,
-		QueueName:                  utils.GetQueueNameFromPod(pod),
+		QueueName:                  utils.GetQueueNameFromPod(pod, constants.ApplicationDefaultQueue),
 		User:                       user,
 		Groups:                     groups,
 		Tags:                       tags,

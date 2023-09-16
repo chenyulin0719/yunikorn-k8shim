@@ -61,7 +61,7 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 		result[constants.AnnotationApplicationID] = appID
 	}
 
-	queueName := getQueueNameFromPod(pod)
+	queueName := utils.GetQueueNameFromPod(pod, "")
 	if queueName == "" {
 		// if defaultQueueName is "", skip adding default queue name to the pod labels
 		if defaultQueueName != "" {
@@ -128,16 +128,6 @@ func getApplicationIDFromPod(pod *v1.Pod) string {
 	}
 	// application ID can be defined in Spark label
 	if value := utils.GetPodLabelValue(pod, constants.SparkLabelAppID); value != "" {
-		return value
-	}
-	return ""
-}
-
-func getQueueNameFromPod(pod *v1.Pod) string {
-	// if existing annotation exist, it takes priority over everything else
-	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value != "" {
-		return value
-	} else if value := utils.GetPodLabelValue(pod, constants.LabelQueueName); value != "" {
 		return value
 	}
 	return ""
