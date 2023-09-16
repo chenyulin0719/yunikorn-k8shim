@@ -68,9 +68,18 @@ func createTestingPodWithMeta() *v1.Pod {
 	return pod
 }
 
-func createTestingPodWithAppId() *v1.Pod {
+func createTestingPodWithLabelAppId() *v1.Pod {
 	pod := createTestingPodWithMeta()
 	pod.ObjectMeta.Labels["applicationId"] = "app-0001"
+
+	return pod
+}
+
+func createTestingPodWithAnnotationAppId() *v1.Pod {
+	pod := createTestingPodWithMeta()
+	pod.ObjectMeta.Annotations = map[string]string{
+		"yunikorn.apache.org/app-id": "app-0001",
+	}
 
 	return pod
 }
@@ -82,9 +91,18 @@ func createTestingPodWithGenerateName() *v1.Pod {
 	return pod
 }
 
-func createTestingPodWithQueue() *v1.Pod {
+func createTestingPodWithLabelQueue() *v1.Pod {
 	pod := createTestingPodWithMeta()
 	pod.ObjectMeta.Labels["queue"] = "root.abc"
+
+	return pod
+}
+
+func createTestingPodWithAnnotationQueue() *v1.Pod {
+	pod := createTestingPodWithMeta()
+	pod.ObjectMeta.Annotations = map[string]string{
+		"yunikorn.apache.org/queue": "root.abc",
+	}
 
 	return pod
 }
@@ -114,8 +132,8 @@ func TestGetAnnotationsForApplicationInfoUpdate(t *testing.T) {
 	}
 
 	// verify if applicationId is given in the labels,
-	// we won't modify it
-	pod = createTestingPodWithAppId()
+	// we'll write to annotation
+	pod = createTestingPodWithLabelAppId()
 
 	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
 		assert.Equal(t, len(result), 2)
@@ -125,9 +143,30 @@ func TestGetAnnotationsForApplicationInfoUpdate(t *testing.T) {
 		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
 	}
 
+	// if appId existing in pod annotation, will keep it
+	pod = createTestingPodWithAnnotationAppId()
+	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
+		assert.Equal(t, len(result), 2)
+		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.default")
+		assert.Equal(t, result["yunikorn.apache.org/app-id"], "app-0001")
+	} else {
+		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
+	}
+
 	// verify if queue is given in the labels,
-	// we won't modify it
-	pod = createTestingPodWithQueue()
+	// we'll write to annotation
+	pod = createTestingPodWithLabelQueue()
+	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
+		assert.Equal(t, len(result), 3)
+		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.abc")
+		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
+		assert.Equal(t, strings.HasPrefix(result["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
+	} else {
+		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
+	}
+
+	// if queue existing in pod annotation, will keep it
+	pod = createTestingPodWithAnnotationQueue()
 	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
 		assert.Equal(t, len(result), 3)
 		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.abc")

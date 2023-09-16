@@ -54,11 +54,11 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 			disableStateAware = value
 		}
 		result[constants.AnnotationDisableStateAware] = disableStateAware
-	}
-
-	// if app id not in pod annotation, add it
-	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationIgnoreApplication); value == "" {
-		result[constants.AnnotationApplicationID] = appID
+	} else {
+		// if appID was not in pod annotations, add it to annotations.
+		if value := utils.GetPodAnnotationValue(pod, constants.AnnotationApplicationID); value == "" {
+			result[constants.AnnotationApplicationID] = appID
+		}
 	}
 
 	queueName := utils.GetQueueNameFromPod(pod, "")
@@ -71,7 +71,7 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 		}
 	}
 
-	// if queue name not in pod annotation, add it
+	// if queue name was not in pod annotations, add it to annotations.
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value == "" {
 		if queueName != "" {
 			result[constants.AnnotationQueueName] = queueName
