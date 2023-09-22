@@ -107,6 +107,15 @@ func createTestingPodWithAnnotationQueue() *v1.Pod {
 	return pod
 }
 
+func createTestingPodWithLabelEnableStateAware() *v1.Pod {
+	pod := createTestingPodWithMeta()
+	pod.ObjectMeta.Labels = map[string]string{
+		constants.LabelDisableStateAware: "false",
+	}
+
+	return pod
+}
+
 func createTestingPodNoNamespaceAndLabels() *v1.Pod {
 	pod := createMinimalTestingPod()
 	pod.ObjectMeta =
@@ -118,147 +127,228 @@ func createTestingPodNoNamespaceAndLabels() *v1.Pod {
 	return pod
 }
 
-func TestGetAnnotationsForApplicationInfoUpdate(t *testing.T) {
+func TestGetNewApplicationInfo(t *testing.T) {
 	// verify when appId/queue are not given,
 	pod := createTestingPodWithMeta()
+	newLabels, newAnnotations := getNewApplicationInfo(pod, "default", false, "root.default")
 
-	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(result["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	assert.Equal(t, len(newLabels), 3)
+	assert.Equal(t, newLabels["queue"], "root.default")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(newLabels["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(newAnnotations), 3)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(newAnnotations["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
 
 	// verify if applicationId is given in the labels,
-	// we'll write to annotation
 	pod = createTestingPodWithLabelAppId()
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "root.default")
 
-	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 2)
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, result["yunikorn.apache.org/app-id"], "app-0001")
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
-
-	// if appId existing in pod annotation, will keep it
-	pod = createTestingPodWithAnnotationAppId()
-	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 2)
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, result["yunikorn.apache.org/app-id"], "app-0001")
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	assert.Equal(t, len(newLabels), 1)
+	assert.Equal(t, newLabels["queue"], "root.default")
+	assert.Equal(t, newLabels["disableStateAware"], "")
+	assert.Equal(t, len(newAnnotations), 2)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/app-id"], "app-0001")
 
 	// verify if queue is given in the labels,
-	// we'll write to annotation
 	pod = createTestingPodWithLabelQueue()
-	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.abc")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(result["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "root.default")
 
-	// if queue existing in pod annotation, will keep it
+	assert.Equal(t, len(newLabels), 2)
+	assert.Equal(t, newLabels["queue"], "")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(newLabels["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(newAnnotations), 3)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.abc")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(newAnnotations["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
+
+	// verify if applicationId is given in the annotation,
+	pod = createTestingPodWithAnnotationAppId()
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "root.default")
+	assert.Equal(t, len(newLabels), 2)
+	assert.Equal(t, newLabels["applicationId"], "app-0001")
+	assert.Equal(t, newLabels["queue"], "root.default")
+	assert.Equal(t, newLabels["disableStateAware"], "")
+	assert.Equal(t, len(newAnnotations), 1)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/app-id"], "")
+
+	// verify if queue is given in the annotation
 	pod = createTestingPodWithAnnotationQueue()
-	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.abc")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(result["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "root.default")
+	assert.Equal(t, len(newLabels), 3)
+	assert.Equal(t, newLabels["queue"], "root.abc")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(newLabels["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(newAnnotations), 2)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(newAnnotations["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
+
+	// verify admission controller won't change state aware setting in pod
+	pod = createTestingPodWithLabelEnableStateAware()
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "root.default")
+
+	assert.Equal(t, len(newLabels), 2)
+	assert.Equal(t, newLabels["queue"], "root.default")
+	assert.Equal(t, strings.HasPrefix(newLabels["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(newAnnotations), 3)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "false")
+	assert.Equal(t, strings.HasPrefix(newAnnotations["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
+
+	// verify empty pod info and default queue name is ""
+	pod = createTestingPodWithMeta()
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "")
+
+	assert.Equal(t, len(newLabels), 2)
+	assert.Equal(t, newLabels["queue"], "")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(newLabels["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(newAnnotations), 2)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(newAnnotations["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
 
 	// namespace might be empty
 	// labels might be empty
 	pod = createTestingPodNoNamespaceAndLabels()
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "root.default")
+	assert.Equal(t, len(newLabels), 3)
+	assert.Equal(t, newLabels["queue"], "root.default")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(newLabels["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(newAnnotations), 3)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(newAnnotations["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
 
-	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(result["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
-
-	// pod name might be empty, it can comes from generatedName
+	// pod name might be empty, applicationId can come from generatedName
 	pod = createTestingPodWithGenerateName()
-	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(result["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "root.default")
+	assert.Equal(t, strings.HasPrefix(newLabels["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, strings.HasPrefix(newAnnotations["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
 
 	pod = createMinimalTestingPod()
-	if result := getAnnotationsForApplicationInfoUpdate(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(result["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	newLabels, newAnnotations = getNewApplicationInfo(pod, "default", false, "root.default")
+	assert.Equal(t, len(newLabels), 3)
+	assert.Equal(t, newLabels["queue"], "root.default")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(newLabels["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(newAnnotations), 3)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(newAnnotations["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
 }
 
 func TestDefaultQueueName(t *testing.T) {
 	defaultConf := createConfig()
 	pod := createTestingPodWithMeta()
-	if result := getAnnotationsForApplicationInfoUpdate(pod, defaultConf.GetNamespace(), defaultConf.GetGenerateUniqueAppIds(), defaultConf.GetDefaultQueueName()); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.default")
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	newLabels, newAnnotations := getNewApplicationInfo(pod, defaultConf.GetNamespace(), defaultConf.GetGenerateUniqueAppIds(), defaultConf.GetDefaultQueueName())
+
+	assert.Equal(t, len(newLabels), 3)
+	assert.Equal(t, newLabels["applicationId"], "yunikorn-default-autogen")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, newLabels["queue"], "root.default")
+	assert.Equal(t, len(newAnnotations), 3)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.default")
 
 	queueNameEmptyConf := createConfigWithOverrides(map[string]string{
 		conf.AMFilteringDefaultQueueName: "",
 	})
-	if result := getAnnotationsForApplicationInfoUpdate(pod, queueNameEmptyConf.GetNamespace(), queueNameEmptyConf.GetGenerateUniqueAppIds(), queueNameEmptyConf.GetDefaultQueueName()); result != nil {
-		assert.Equal(t, len(result), 2)
-		assert.Equal(t, result["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "")
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	newLabels, newAnnotations = getNewApplicationInfo(pod, queueNameEmptyConf.GetNamespace(), queueNameEmptyConf.GetGenerateUniqueAppIds(), queueNameEmptyConf.GetDefaultQueueName())
+	assert.Equal(t, len(newLabels), 2)
+	assert.Equal(t, newLabels["applicationId"], "yunikorn-default-autogen")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, newLabels["queue"], "")
+	assert.Equal(t, len(newAnnotations), 2)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "")
 
 	customQueueNameConf := createConfigWithOverrides(map[string]string{
 		conf.AMFilteringDefaultQueueName: "yunikorn",
 	})
-	if result := getAnnotationsForApplicationInfoUpdate(pod, customQueueNameConf.GetNamespace(), customQueueNameConf.GetGenerateUniqueAppIds(), customQueueNameConf.GetDefaultQueueName()); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Assert(t, result["yunikorn.apache.org/queue"] != "yunikorn")
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
-	}
+	newLabels, newAnnotations = getNewApplicationInfo(pod, customQueueNameConf.GetNamespace(), customQueueNameConf.GetGenerateUniqueAppIds(), customQueueNameConf.GetDefaultQueueName())
+	assert.Equal(t, len(newLabels), 3)
+	assert.Equal(t, newLabels["applicationId"], "yunikorn-default-autogen")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Assert(t, newLabels["queue"] != "yunikorn")
+	assert.Equal(t, len(newAnnotations), 3)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Assert(t, newAnnotations["yunikorn.apache.org/queue"] != "yunikorn")
 
 	customValidQueueNameConf := createConfigWithOverrides(map[string]string{
 		conf.AMFilteringDefaultQueueName: "root.yunikorn",
 	})
-	if result := getAnnotationsForApplicationInfoUpdate(pod, customValidQueueNameConf.GetNamespace(),
-		customValidQueueNameConf.GetGenerateUniqueAppIds(), customValidQueueNameConf.GetDefaultQueueName()); result != nil {
-		assert.Equal(t, len(result), 3)
-		assert.Equal(t, result["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
-		assert.Equal(t, result["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, result["yunikorn.apache.org/queue"], "root.yunikorn")
-	} else {
-		t.Fatal("getAnnotationsForApplicationInfoUpdate is not as expected")
+	newLabels, newAnnotations = getNewApplicationInfo(pod, customValidQueueNameConf.GetNamespace(),
+		customValidQueueNameConf.GetGenerateUniqueAppIds(), customValidQueueNameConf.GetDefaultQueueName())
+	assert.Equal(t, len(newLabels), 3)
+	assert.Equal(t, newLabels["applicationId"], "yunikorn-default-autogen")
+	assert.Equal(t, newLabels["disableStateAware"], "true")
+	assert.Equal(t, newLabels["queue"], "root.yunikorn")
+	assert.Equal(t, len(newAnnotations), 3)
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/app-id"], "yunikorn-default-autogen")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, newAnnotations["yunikorn.apache.org/queue"], "root.yunikorn")
+}
+
+func TestUpdateLabelIfNotPresentInPod(t *testing.T) {
+	pod := createTestingPodWithMeta()
+	pod.ObjectMeta.Labels = map[string]string{
+		"exist_key": "exist_value",
 	}
+
+	// Verify updating label that exist in pod
+	result := make(map[string]string)
+	result = updateLabelIfNotPresentInPod(pod, result, "exist_key", "new_value")
+	assert.Equal(t, len(result), 0)
+	assert.Equal(t, result["exist_key"], "")
+
+	// Verify updating label that not exists in pod
+	result = make(map[string]string)
+	result = updateLabelIfNotPresentInPod(pod, result, "new_key", "new_value")
+	assert.Equal(t, len(result), 1)
+	assert.Equal(t, result["new_key"], "new_value")
+
+	// Verify if no label in pod
+	pod.ObjectMeta.Labels = nil
+	result = make(map[string]string)
+	result = updateLabelIfNotPresentInPod(pod, result, "new_key", "new_value")
+	assert.Equal(t, len(result), 1)
+	assert.Equal(t, result["new_key"], "new_value")
+}
+
+func TestUpdateAnnotationIfNotPresentInPod(t *testing.T) {
+	pod := createTestingPodWithMeta()
+	pod.ObjectMeta.Annotations = map[string]string{
+		"exist_key": "exist_value",
+	}
+
+	// Verify updating annotation that exist in pod
+	result := make(map[string]string)
+	result = updateAnnotationIfNotPresentInPod(pod, result, "exist_key", "new_value")
+	assert.Equal(t, len(result), 0)
+	assert.Equal(t, result["exist_key"], "")
+
+	// Verify updating annotation that not exists in pod
+	result = make(map[string]string)
+	result = updateAnnotationIfNotPresentInPod(pod, result, "new_key", "new_value")
+	assert.Equal(t, len(result), 1)
+	assert.Equal(t, result["new_key"], "new_value")
+
+	// Verify if no annotation in pod
+	pod.ObjectMeta.Labels = nil
+	result = make(map[string]string)
+	result = updateAnnotationIfNotPresentInPod(pod, result, "new_key", "new_value")
+	assert.Equal(t, len(result), 1)
+	assert.Equal(t, result["new_key"], "new_value")
 }
 
 func TestGenerateAppID(t *testing.T) {
@@ -316,11 +406,11 @@ func TestGetApplicationIDFromPod(t *testing.T) {
 	appName := []string{"app00001", "app00002"}
 
 	// test empty pod
-	pod1 := &v1.Pod{}
-	assert.Equal(t, getApplicationIDFromPod(pod1), "")
+	pod := &v1.Pod{}
+	assert.Equal(t, getApplicationIDFromPod(pod), "")
 
 	// test annotation take precedence over label
-	pod2 := &v1.Pod{
+	pod = &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				constants.LabelApplicationID: appName[0],
@@ -330,28 +420,44 @@ func TestGetApplicationIDFromPod(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, getApplicationIDFromPod(pod2), appName[1])
+	assert.Equal(t, getApplicationIDFromPod(pod), appName[1])
 
 	// test pod with label only
-	pod3 := &v1.Pod{
+	pod = &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				constants.LabelApplicationID: appName[0],
 			},
 		},
 	}
-	assert.Equal(t, getApplicationIDFromPod(pod3), appName[0])
+	assert.Equal(t, getApplicationIDFromPod(pod), appName[0])
+}
 
-	// test pod with empty applicationID annotation
-	pod4 := &v1.Pod{
+func TestGetDisableStateAwareFromPod(t *testing.T) {
+	// test empty pod
+	pod := &v1.Pod{}
+	assert.Equal(t, getDisableStateAwareFromPod(pod), "")
+
+	// test annotation take precedence over label
+	pod = &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
-				constants.LabelApplicationID: appName[0],
+				constants.LabelDisableStateAware: "true",
 			},
 			Annotations: map[string]string{
-				constants.AnnotationApplicationID: "",
+				constants.AnnotationDisableStateAware: "false",
 			},
 		},
 	}
-	assert.Equal(t, getApplicationIDFromPod(pod4), appName[0])
+	assert.Equal(t, getDisableStateAwareFromPod(pod), "false")
+
+	// test pod with label only
+	pod = &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				constants.LabelDisableStateAware: "true",
+			},
+		},
+	}
+	assert.Equal(t, getDisableStateAwareFromPod(pod), "true")
 }

@@ -66,31 +66,30 @@ func TestUpdateApplicationInfo(t *testing.T) {
 			Namespace:       "default",
 			UID:             "7f5fd6c5d5",
 			ResourceVersion: "10654",
-			Labels: map[string]string{
-				"random": "random",
-			},
 		},
 		Spec:   v1.PodSpec{},
 		Status: v1.PodStatus{},
 	}
 
 	c := createAdmissionControllerForTest()
+
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	assert.Equal(t, len(patch), 1)
-	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations")
-	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 3)
-		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, updatedMap["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(updatedMap["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("patch info content is not as expected")
-	}
+	labelsInPatch := fetchPatchValues("add", "/metadata/labels", patch)
+	annotationsInPatch := fetchPatchValues("add", "/metadata/annotations", patch)
+
+	assert.Equal(t, len(patch), 2)
+	assert.Equal(t, len(labelsInPatch), 3)
+	assert.Equal(t, labelsInPatch["queue"], "root.default")
+	assert.Equal(t, labelsInPatch["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(labelsInPatch["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(annotationsInPatch), 3)
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(annotationsInPatch["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
 
 	// verify if applicationId is given in the labels,
-	// we won't modify it
+	// we won't modify it, and will patch it to annotation
 	patch = make([]common.PatchOperation, 0)
 
 	pod = &v1.Pod{
@@ -104,7 +103,6 @@ func TestUpdateApplicationInfo(t *testing.T) {
 			UID:             "7f5fd6c5d5",
 			ResourceVersion: "10654",
 			Labels: map[string]string{
-				"random":        "random",
 				"applicationId": "app-0001",
 			},
 		},
@@ -113,19 +111,20 @@ func TestUpdateApplicationInfo(t *testing.T) {
 	}
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	assert.Equal(t, len(patch), 1)
-	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
-	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 2)
-		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, updatedMap["yunikorn.apache.org/app-id"], "app-0001")
-	} else {
-		t.Fatal("patch info content is not as expected")
-	}
+	labelsInPatch = fetchPatchValues("add", "/metadata/labels", patch)
+	annotationsInPatch = fetchPatchValues("add", "/metadata/annotations", patch)
+
+	assert.Equal(t, len(patch), 2)
+	assert.Equal(t, len(labelsInPatch), 2)
+	assert.Equal(t, labelsInPatch["queue"], "root.default")
+	assert.Equal(t, labelsInPatch["applicationId"], "app-0001")
+	assert.Equal(t, len(patch), 2)
+	assert.Equal(t, len(annotationsInPatch), 2)
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/app-id"], "app-0001")
 
 	// verify if queue is given in the labels,
-	// we won't modify it
+	// we won't modify it, and will patch it to annotation
 	patch = make([]common.PatchOperation, 0)
 
 	pod = &v1.Pod{
@@ -139,8 +138,7 @@ func TestUpdateApplicationInfo(t *testing.T) {
 			UID:             "7f5fd6c5d5",
 			ResourceVersion: "10654",
 			Labels: map[string]string{
-				"random": "random",
-				"queue":  "root.abc",
+				"queue": "root.abc",
 			},
 		},
 		Spec:   v1.PodSpec{},
@@ -149,20 +147,21 @@ func TestUpdateApplicationInfo(t *testing.T) {
 
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	assert.Equal(t, len(patch), 1)
-	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
-	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 3)
-		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.abc")
-		assert.Equal(t, updatedMap["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(updatedMap["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("patch info content is not as expected")
-	}
+	labelsInPatch = fetchPatchValues("add", "/metadata/labels", patch)
+	annotationsInPatch = fetchPatchValues("add", "/metadata/annotations", patch)
 
-	// namespace might be empty
-	// labels might be empty
+	assert.Equal(t, len(patch), 2)
+	assert.Equal(t, len(labelsInPatch), 3)
+	assert.Equal(t, labelsInPatch["queue"], "root.abc")
+	assert.Equal(t, labelsInPatch["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(labelsInPatch["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(annotationsInPatch), 3)
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/queue"], "root.abc")
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(annotationsInPatch["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
+
+	// verify if applicationId is given in the annotations,
+	// we won't modify it, and will patch it to labels
 	patch = make([]common.PatchOperation, 0)
 
 	pod = &v1.Pod{
@@ -172,85 +171,39 @@ func TestUpdateApplicationInfo(t *testing.T) {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "a-test-pod",
+			Namespace:       "default",
 			UID:             "7f5fd6c5d5",
 			ResourceVersion: "10654",
+			Annotations: map[string]string{
+				"yunikorn.apache.org/app-id": "app-0001",
+			},
 		},
 		Spec:   v1.PodSpec{},
 		Status: v1.PodStatus{},
 	}
-
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	assert.Equal(t, len(patch), 1)
-	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
-	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 3)
-		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, updatedMap["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(updatedMap["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("patch info content is not as expected")
-	}
+	labelsInPatch = fetchPatchValues("add", "/metadata/labels", patch)
+	annotationsInPatch = fetchPatchValues("add", "/metadata/annotations", patch)
 
-	// pod name might be empty, it can comes from generatedName
+	assert.Equal(t, len(patch), 2)
+	assert.Equal(t, len(labelsInPatch), 2)
+	assert.Equal(t, labelsInPatch["queue"], "root.default")
+	assert.Equal(t, labelsInPatch["applicationId"], "app-0001")
+	assert.Equal(t, len(patch), 2)
+	assert.Equal(t, len(annotationsInPatch), 2)
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/app-id"], "app-0001")
+
+	// if both annotation and labels patch existing, add new labels/annotation with the existing patch.
 	patch = make([]common.PatchOperation, 0)
-
-	pod = &v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
+	patch = append(patch, common.PatchOperation{
+		Op:   "add",
+		Path: "/metadata/labels",
+		Value: map[string]string{
+			"existingLabelKey": "existingLabelValue",
 		},
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "some-pod-",
-		},
-		Spec:   v1.PodSpec{},
-		Status: v1.PodStatus{},
-	}
-
-	patch = c.updateApplicationInfo("default", pod, patch)
-
-	assert.Equal(t, len(patch), 1)
-	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
-	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 3)
-		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, updatedMap["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(updatedMap["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("patch info content is not as expected")
-	}
-
-	// pod name and generate name could be both empty
-	patch = make([]common.PatchOperation, 0)
-
-	pod = &v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{},
-		Spec:       v1.PodSpec{},
-		Status:     v1.PodStatus{},
-	}
-
-	patch = c.updateApplicationInfo("default", pod, patch)
-
-	assert.Equal(t, len(patch), 1)
-	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/metadata/annotations") //nolint:gosec
-	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 3)
-		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, updatedMap["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(updatedMap["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("patch info content is not as expected")
-	}
-
-	// should combine with the existing patch, which has the 'add' operation and the '/metadata/annotations' path.
-	patch = make([]common.PatchOperation, 0)
+	})
 	patch = append(patch, common.PatchOperation{
 		Op:   "add",
 		Path: "/metadata/annotations",
@@ -258,30 +211,125 @@ func TestUpdateApplicationInfo(t *testing.T) {
 			"existingAnnotationKey": "existingAnnotationValue",
 		},
 	})
-	pod = &v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{},
-		Spec:       v1.PodSpec{},
-		Status:     v1.PodStatus{},
-	}
+	pod = &v1.Pod{}
 
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	assert.Equal(t, len(patch), 1)
-	assert.Equal(t, patch[0].Op, "add")                           //nolint:gosec
-	assert.Equal(t, patch[0].Path, "/metadata/annotations")       //nolint:gosec
-	if updatedMap, ok := patch[0].Value.(map[string]string); ok { //nolint:gosec
-		assert.Equal(t, len(updatedMap), 4)
-		assert.Equal(t, updatedMap["existingAnnotationKey"], "existingAnnotationValue")
-		assert.Equal(t, updatedMap["yunikorn.apache.org/queue"], "root.default")
-		assert.Equal(t, updatedMap["yunikorn.apache.org/disable-state-aware"], "true")
-		assert.Equal(t, strings.HasPrefix(updatedMap["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
-	} else {
-		t.Fatal("patch info content is not as expected")
+	labelsInPatch = fetchPatchValues("add", "/metadata/labels", patch)
+	annotationsInPatch = fetchPatchValues("add", "/metadata/annotations", patch)
+
+	assert.Equal(t, len(labelsInPatch), 4)
+	assert.Equal(t, labelsInPatch["existingLabelKey"], "existingLabelValue")
+	assert.Equal(t, labelsInPatch["queue"], "root.default")
+	assert.Equal(t, labelsInPatch["disableStateAware"], "true")
+	assert.Equal(t, strings.HasPrefix(labelsInPatch["applicationId"], constants.AutoGenAppPrefix), true)
+	assert.Equal(t, len(annotationsInPatch), 4)
+	assert.Equal(t, annotationsInPatch["existingAnnotationKey"], "existingAnnotationValue")
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/queue"], "root.default")
+	assert.Equal(t, annotationsInPatch["yunikorn.apache.org/disable-state-aware"], "true")
+	assert.Equal(t, strings.HasPrefix(annotationsInPatch["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
+}
+
+func TestUpdateLabelPatch(t *testing.T) {
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"label_key_in_pod": "label_value_in_pod",
+			},
+		},
 	}
+
+	// Verify if no existing patch on labels, add patch with pod labels and new labels
+	patch := make([]common.PatchOperation, 0)
+	newLabels := map[string]string{
+		"new_key_1": "new_value_1",
+		"new_key_2": "new_value_2",
+	}
+	patch = updateLabelPatch(pod, newLabels, patch)
+	result := fetchPatchValues("add", "/metadata/labels", patch)
+
+	assert.Equal(t, len(result), 3)
+	assert.Equal(t, result["label_key_in_pod"], "label_value_in_pod")
+	assert.Equal(t, result["new_key_1"], "new_value_1")
+	assert.Equal(t, result["new_key_2"], "new_value_2")
+
+	// Verify if have existing patch on labels, combin existing patch labels and new labels
+	patch = make([]common.PatchOperation, 0)
+	patch = append(patch, common.PatchOperation{
+		Op:   "add",
+		Path: "/metadata/labels",
+		Value: map[string]string{
+			"label_key_in_patch": "label_value_in_patch",
+		},
+	})
+	newLabels = map[string]string{
+		"new_key_1": "new_value_1",
+		"new_key_2": "new_value_2",
+	}
+
+	patch = updateLabelPatch(pod, newLabels, patch)
+	result = fetchPatchValues("add", "/metadata/labels", patch)
+
+	assert.Equal(t, len(result), 3)
+	assert.Equal(t, result["label_key_in_patch"], "label_value_in_patch")
+	assert.Equal(t, result["new_key_1"], "new_value_1")
+	assert.Equal(t, result["new_key_2"], "new_value_2")
+}
+
+func TestUpdateAnnotationPatch(t *testing.T) {
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{
+				"annotation_key_in_pod": "annotation_value_in_pod",
+			},
+		},
+	}
+
+	// Verify if no existing patch on annotations, add patch with pod annotation and new annotations
+	patch := make([]common.PatchOperation, 0)
+	newAnnotations := map[string]string{
+		"new_key_1": "new_value_1",
+		"new_key_2": "new_value_2",
+	}
+	patch = updateAnnotationPatch(pod, newAnnotations, patch)
+	result := fetchPatchValues("add", "/metadata/annotations", patch)
+
+	assert.Equal(t, len(result), 3)
+	assert.Equal(t, result["annotation_key_in_pod"], "annotation_value_in_pod")
+	assert.Equal(t, result["new_key_1"], "new_value_1")
+	assert.Equal(t, result["new_key_2"], "new_value_2")
+
+	// Verify if have existing patch on annotations, combin existing patch annotations and new annotations
+	patch = make([]common.PatchOperation, 0)
+	patch = append(patch, common.PatchOperation{
+		Op:   "add",
+		Path: "/metadata/annotations",
+		Value: map[string]string{
+			"annotation_key_in_patch": "annotation_value_in_patch",
+		},
+	})
+	newAnnotations = map[string]string{
+		"new_key_1": "new_value_1",
+		"new_key_2": "new_value_2",
+	}
+
+	patch = updateAnnotationPatch(pod, newAnnotations, patch)
+	result = fetchPatchValues("add", "/metadata/annotations", patch)
+
+	assert.Equal(t, len(result), 3)
+	assert.Equal(t, result["annotation_key_in_patch"], "annotation_value_in_patch")
+	assert.Equal(t, result["new_key_1"], "new_value_1")
+	assert.Equal(t, result["new_key_2"], "new_value_2")
+}
+
+func fetchPatchValues(op string, path string, patch []common.PatchOperation) map[string]string {
+	// check for an existing patch
+	for _, p := range patch {
+		if p.Op == op && p.Path == path {
+			return p.Value.(map[string]string)
+		}
+	}
+	return make(map[string]string)
 }
 
 func TestUpdateSchedulerName(t *testing.T) {
@@ -880,6 +928,16 @@ func schedulerName(t *testing.T, patch []byte) string {
 		}
 	}
 	return ""
+}
+
+func labels(t *testing.T, patch []byte) map[string]interface{} {
+	ops := parsePatch(t, patch)
+	for _, op := range ops {
+		if op.Path == "/metadata/labels" {
+			return op.Value.(map[string]interface{})
+		}
+	}
+	return make(map[string]interface{})
 }
 
 func annotations(t *testing.T, patch []byte) map[string]interface{} {
