@@ -423,9 +423,42 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 		zap.Any("labels", pod.Labels),
 		zap.Any("annotations", pod.Annotations))
 
-	annotations := getAnnotationsForApplicationInfoUpdate(pod, namespace, c.conf.GetGenerateUniqueAppIds(), c.conf.GetDefaultQueueName())
+	newLabels, newAnnotations := getNewApplicationInfo(pod, namespace, c.conf.GetGenerateUniqueAppIds(), c.conf.GetDefaultQueueName())
 
-	// check for an existing patch on annotations and update it
+	patch = updateLabelPatch(pod, newLabels, patch)
+	patch = updateAnnotationPatch(pod, newAnnotations, patch)
+
+	return patch
+}
+
+func updateLabelPatch(pod *v1.Pod, labels map[string]string, patch []common.PatchOperation) []common.PatchOperation {
+	// if found an existing patch on labels, add new labels to it
+	for _, p := range patch {
+		if p.Op == "add" && p.Path == "/metadata/labels" {
+			if existingLabels, ok := p.Value.(map[string]string); ok {
+				for k, v := range labels {
+					existingLabels[k] = v
+				}
+				return patch
+			}
+		}
+	}
+	// Add a new label patch
+	if len(labels) != 0 {
+		// combine new labels with existing labels in pod to create first patch
+		existingLabels := pod.Labels
+		labels = utils.MergeMaps(existingLabels, labels)
+		patch = append(patch, common.PatchOperation{
+			Op:    "add",
+			Path:  "/metadata/labels",
+			Value: labels,
+		})
+	}
+	return patch
+}
+
+func updateAnnotationPatch(pod *v1.Pod, annotations map[string]string, patch []common.PatchOperation) []common.PatchOperation {
+	// if found an existing patch on annotations, add new annotations to it
 	for _, p := range patch {
 		if p.Op == "add" && p.Path == "/metadata/annotations" {
 			if existingAnnotations, ok := p.Value.(map[string]string); ok {
@@ -436,15 +469,17 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 			}
 		}
 	}
-
+	// Add a new annotation patch
 	if len(annotations) != 0 {
+		// combine new annotations with existing annotations in pod to create first patch
+		existingAnnotations := pod.Annotations
+		annotations = utils.MergeMaps(existingAnnotations, annotations)
 		patch = append(patch, common.PatchOperation{
 			Op:    "add",
 			Path:  "/metadata/annotations",
 			Value: annotations,
 		})
 	}
-
 	return patch
 }
 

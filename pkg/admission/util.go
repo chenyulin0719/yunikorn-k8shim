@@ -31,13 +31,17 @@ import (
 	"github.com/apache/yunikorn-k8shim/pkg/log"
 )
 
-func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, generateUniqueAppIds bool, defaultQueueName string) map[string]string {
-	result := make(map[string]string)
-	existingAnnotations := pod.Annotations
-	for k, v := range existingAnnotations {
-		result[k] = v
-	}
+func getNewApplicationInfo(pod *v1.Pod, namespace string, generateUniqueAppIds bool, defaultQueueName string) (map[string]string, map[string]string) {
+	newLabels := make(map[string]string)
+	newAnnotations := make(map[string]string)
+
 	appID := getApplicationIDFromPod(pod)
+	disableStateAware := getDisableStateAwareFromPod(pod)
+
+	// for undefined configuration, am_conf will add 'root.default' as default queue name
+	// if a custom name is configured for default queue, it will be used instead of root.default
+	queueName := utils.GetQueueNameFromPod(pod, defaultQueueName)
+
 	if appID == "" {
 		// if app id not exist, generate one
 		// for each namespace, we group unnamed pods to one single app - if GenerateUniqueAppId is not set
@@ -46,34 +50,60 @@ func getAnnotationsForApplicationInfoUpdate(pod *v1.Pod, namespace string, gener
 		// else
 		// 		application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
 		appID = generateAppID(namespace, generateUniqueAppIds)
-		result[constants.AnnotationApplicationID] = appID
 
 		// if we generate an app ID, disable state-aware scheduling for this app
-		disableStateAware := "true"
-		if value := utils.GetPodLabelValue(pod, constants.LabelDisableStateAware); value != "" {
-			disableStateAware = value
-		}
-		result[constants.AnnotationDisableStateAware] = disableStateAware
-	} else {
-		// if appID was not in pod annotations, add it to annotations.
-		if value := utils.GetPodAnnotationValue(pod, constants.AnnotationApplicationID); value == "" {
-			result[constants.AnnotationApplicationID] = appID
+		// skip it if disableStateAware has already been set in the pod
+		if disableStateAware == "" {
+			disableStateAware = "true"
 		}
 	}
 
-	// for undefined configuration, am_conf will add 'root.default' as default queue name
-	// if a custom name is configured for default queue, it will be used instead of root.default
-	queueName := utils.GetQueueNameFromPod(pod, defaultQueueName)
+	// we're looking forward to deprecate the labels and move everything to annotations
+	// but for backforward, we still add to labels
+	newLabels = updateLabelIfNotPresentInPod(pod, newLabels, constants.LabelApplicationID, appID)
+	newAnnotations = updateAnnotationIfNotPresentInPod(pod, newAnnotations, constants.AnnotationApplicationID, appID)
 
-	// if queue name was not in pod annotations, add it to annotations.
-	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName); value == "" {
-		// if defaultQueueName is "", skip adding default queue name to the pod annotation
-		if queueName != "" {
-			result[constants.AnnotationQueueName] = queueName
-		}
+	// skip adding empty disableStateAware to the pod
+	if disableStateAware != "" {
+		newLabels = updateLabelIfNotPresentInPod(pod, newLabels, constants.LabelDisableStateAware, disableStateAware)
+		newAnnotations = updateAnnotationIfNotPresentInPod(pod, newAnnotations, constants.AnnotationDisableStateAware, disableStateAware)
 	}
 
-	return result
+	// skip adding empty queue name to the pod
+	if queueName != "" {
+		newLabels = updateLabelIfNotPresentInPod(pod, newLabels, constants.LabelQueueName, queueName)
+		newAnnotations = updateAnnotationIfNotPresentInPod(pod, newAnnotations, constants.AnnotationQueueName, queueName)
+	}
+
+	return newLabels, newAnnotations
+}
+
+func updateLabelIfNotPresentInPod(pod *v1.Pod, labelMap map[string]string, label string, value string) map[string]string {
+	existingLabels := pod.Labels
+
+	if existingLabels == nil {
+		labelMap[label] = value
+	}
+
+	// skip update label if it has already been set in the pod
+	if _, ok := existingLabels[label]; !ok {
+		labelMap[label] = value
+	}
+	return labelMap
+}
+
+func updateAnnotationIfNotPresentInPod(pod *v1.Pod, annotationMap map[string]string, annotation string, value string) map[string]string {
+	existingAnnotations := pod.Annotations
+
+	if existingAnnotations == nil {
+		annotationMap[annotation] = value
+	}
+
+	// skip update annotation if it has already been set in the pod
+	if _, ok := existingAnnotations[annotation]; !ok {
+		annotationMap[annotation] = value
+	}
+	return annotationMap
 }
 
 func updatePodAnnotation(pod *v1.Pod, key string, value string) map[string]string {
@@ -123,6 +153,16 @@ func getApplicationIDFromPod(pod *v1.Pod) string {
 	}
 	// application ID can be defined in Spark label
 	if value := utils.GetPodLabelValue(pod, constants.SparkLabelAppID); value != "" {
+		return value
+	}
+	return ""
+}
+
+func getDisableStateAwareFromPod(pod *v1.Pod) string {
+	// if existing annotation exist, it takes priority over everything else
+	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationDisableStateAware); value != "" {
+		return value
+	} else if value := utils.GetPodLabelValue(pod, constants.LabelDisableStateAware); value != "" {
 		return value
 	}
 	return ""
