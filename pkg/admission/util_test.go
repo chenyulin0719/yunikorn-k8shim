@@ -127,6 +127,7 @@ func createTestingPodNoNamespaceAndLabels() *v1.Pod {
 	return pod
 }
 
+// nolint: funlen
 func TestGetNewApplicationInfo(t *testing.T) {
 	// verify when appId/queue are not given, will generate it
 	pod := createTestingPodWithMeta()
