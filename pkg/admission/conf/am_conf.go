@@ -19,11 +19,14 @@
 package conf
 
 import (
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -229,16 +232,28 @@ type configMapUpdateHandler struct {
 
 func (h *configMapUpdateHandler) OnAdd(obj interface{}, _ bool) {
 	cm := utils.Convert2ConfigMap(obj)
+	// i, _ := rand.Int(rand.Reader, new(big.Int).SetInt64(int64(133)))
+
+	// log.Log(log.AdmissionConf).Info(fmt.Sprintf("### OnAdd %v, %v", i, cm))
+
+	// time.Sleep(1 * time.Second)
 	if idx, ok := h.configMapIndex(cm); ok {
 		h.conf.configUpdated(idx, cm)
 	}
+	// log.Log(log.AdmissionConf).Info(fmt.Sprintf("### OnAdd %v Completed, %v", i, cm))
 }
 
 func (h *configMapUpdateHandler) OnUpdate(_, newObj interface{}) {
 	cm := utils.Convert2ConfigMap(newObj)
+
+	i, _ := rand.Int(rand.Reader, new(big.Int).SetInt64(int64(133)))
+	log.Log(log.AdmissionConf).Info(fmt.Sprintf("### OnUpdate %v, %v", i, cm))
+
+	time.Sleep(1 * time.Second)
 	if idx, ok := h.configMapIndex(cm); ok {
 		h.conf.configUpdated(idx, cm)
 	}
+	log.Log(log.AdmissionConf).Info(fmt.Sprintf("### OnUpdate %v Completed, %v", i, cm))
 }
 
 func (h *configMapUpdateHandler) OnDelete(obj interface{}) {
