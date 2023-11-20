@@ -425,59 +425,41 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 
 	newLabels, newAnnotations := getNewApplicationInfo(pod, namespace, c.conf.GetGenerateUniqueAppIds(), c.conf.GetDefaultQueueName())
 
-	patch = updateLabelPatch(pod, newLabels, patch)
-	patch = updateAnnotationPatch(pod, newAnnotations, patch)
+	patch = updatePatch(pod, newLabels, constants.LabelPatchPath, patch)
+	patch = updatePatch(pod, newAnnotations, constants.AnnotationPatchPath, patch)
 
 	return patch
 }
 
-func updateLabelPatch(pod *v1.Pod, labels map[string]string, patch []common.PatchOperation) []common.PatchOperation {
-	// if found an existing patch on labels, add new labels to it
+func updatePatch(pod *v1.Pod, newValues map[string]string, patchPath string, patch []common.PatchOperation) []common.PatchOperation {
+	// if found an existing patch, add new values to it
 	for _, p := range patch {
-		if p.Op == constants.AddPatchOp && p.Path == constants.LabelPatchPath {
-			if existingLabels, ok := p.Value.(map[string]string); ok {
-				for k, v := range labels {
-					existingLabels[k] = v
+		if p.Op == constants.AddPatchOp && p.Path == patchPath {
+			if existingPatchValues, ok := p.Value.(map[string]string); ok {
+				for k, v := range newValues {
+					existingPatchValues[k] = v
 				}
 				return patch
 			}
 		}
 	}
-	// Add a new label patch
-	if len(labels) != 0 {
-		// combine new labels with existing labels in pod to create first patch
-		existingLabels := pod.Labels
-		labels = utils.MergeMaps(existingLabels, labels)
-		patch = append(patch, common.PatchOperation{
-			Op:    constants.AddPatchOp,
-			Path:  constants.LabelPatchPath,
-			Value: labels,
-		})
-	}
-	return patch
-}
 
-func updateAnnotationPatch(pod *v1.Pod, annotations map[string]string, patch []common.PatchOperation) []common.PatchOperation {
-	// if found an existing patch on annotations, add new annotations to it
-	for _, p := range patch {
-		if p.Op == constants.AddPatchOp && p.Path == constants.AnnotationPatchPath {
-			if existingAnnotations, ok := p.Value.(map[string]string); ok {
-				for k, v := range annotations {
-					existingAnnotations[k] = v
-				}
-				return patch
-			}
+	// Add a new patch
+	if len(newValues) != 0 {
+		// combine new values with existing values in pod to create first patch
+		var existingPodValues map[string]string
+		if patchPath == constants.LabelPatchPath {
+			// newly add labels patch should include existing labels in pod
+			existingPodValues = pod.Labels
+		} else if patchPath == constants.AnnotationPatchPath {
+			// newly add annotations patch should include existing annotations in pod
+			existingPodValues = pod.Annotations
 		}
-	}
-	// Add a new annotation patch
-	if len(annotations) != 0 {
-		// combine new annotations with existing annotations in pod to create first patch
-		existingAnnotations := pod.Annotations
-		annotations = utils.MergeMaps(existingAnnotations, annotations)
+		patchValue := utils.MergeMaps(existingPodValues, newValues)
 		patch = append(patch, common.PatchOperation{
 			Op:    constants.AddPatchOp,
-			Path:  constants.AnnotationPatchPath,
-			Value: annotations,
+			Path:  patchPath,
+			Value: patchValue,
 		})
 	}
 	return patch

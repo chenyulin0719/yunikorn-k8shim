@@ -231,100 +231,114 @@ func TestUpdateApplicationInfo(t *testing.T) {
 	assert.Equal(t, strings.HasPrefix(annotationsInPatch["yunikorn.apache.org/app-id"], constants.AutoGenAppPrefix), true)
 }
 
-func TestUpdateLabelPatch(t *testing.T) {
+func TestUpdatePatch(t *testing.T) {
+	// dummy pod for following test cases
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				"label_key_in_pod": "label_value_in_pod",
 			},
-		},
-	}
-
-	// Verify if no patch on labels in patch list,
-	// create a new patch with pods's existing labels and put new labels into the patch
-	patch := make([]common.PatchOperation, 0)
-	newLabels := map[string]string{
-		"new_key_1": "new_value_1",
-		"new_key_2": "new_value_2",
-	}
-	patch = updateLabelPatch(pod, newLabels, patch)
-	result := fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
-
-	assert.Equal(t, len(result), 3)
-	assert.Equal(t, result["label_key_in_pod"], "label_value_in_pod")
-	assert.Equal(t, result["new_key_1"], "new_value_1")
-	assert.Equal(t, result["new_key_2"], "new_value_2")
-
-	// Verify if have patch on labels in patch list,
-	// won't crete new patch and will add new labels into the patch
-	patch = make([]common.PatchOperation, 0)
-	patch = append(patch, common.PatchOperation{
-		Op:   constants.AddPatchOp,
-		Path: constants.LabelPatchPath,
-		Value: map[string]string{
-			"label_key_in_patch": "label_value_in_patch",
-		},
-	})
-	newLabels = map[string]string{
-		"new_key_1": "new_value_1",
-		"new_key_2": "new_value_2",
-	}
-
-	patch = updateLabelPatch(pod, newLabels, patch)
-	result = fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
-
-	assert.Equal(t, len(result), 3)
-	assert.Equal(t, result["label_key_in_patch"], "label_value_in_patch")
-	assert.Equal(t, result["new_key_1"], "new_value_1")
-	assert.Equal(t, result["new_key_2"], "new_value_2")
-}
-
-func TestUpdateAnnotationPatch(t *testing.T) {
-	pod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
 			Annotations: map[string]string{
 				"annotation_key_in_pod": "annotation_value_in_pod",
 			},
 		},
 	}
 
-	// Verify if no patch on annotations in patch list,
-	// create a new patch with pods's existing annotations and put new annotation into the patch
-	patch := make([]common.PatchOperation, 0)
-	newAnnotations := map[string]string{
-		"new_key_1": "new_value_1",
-		"new_key_2": "new_value_2",
-	}
-	patch = updateAnnotationPatch(pod, newAnnotations, patch)
-	result := fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
-
-	assert.Equal(t, len(result), 3)
-	assert.Equal(t, result["annotation_key_in_pod"], "annotation_value_in_pod")
-	assert.Equal(t, result["new_key_1"], "new_value_1")
-	assert.Equal(t, result["new_key_2"], "new_value_2")
-
-	// Verify if have patch on annotation in patch list,
-	// won't crete new patch and will add new annotation into the patch
-	patch = make([]common.PatchOperation, 0)
-	patch = append(patch, common.PatchOperation{
-		Op:   constants.AddPatchOp,
-		Path: constants.AnnotationPatchPath,
-		Value: map[string]string{
-			"annotation_key_in_patch": "annotation_value_in_patch",
+	testCases := []struct {
+		description         string
+		pod                 *v1.Pod
+		patch               []common.PatchOperation
+		patchPath           string
+		newValues           map[string]string
+		expectedPatchValues map[string]string
+		expectedPatchSize   int
+	}{
+		{
+			description: "Verify if no patch on labels in patch list, create new patch with pods's existing labels and put new labels into the patch",
+			pod:         pod,
+			patch:       make([]common.PatchOperation, 0),
+			patchPath:   constants.LabelPatchPath,
+			newValues: map[string]string{
+				"new_key_1": "new_value_1",
+				"new_key_2": "new_value_2",
+			},
+			expectedPatchValues: map[string]string{
+				"label_key_in_pod": "label_value_in_pod",
+				"new_key_1":        "new_value_1",
+				"new_key_2":        "new_value_2",
+			},
+			expectedPatchSize: 1,
+		}, {
+			description: "Verify if no patch on annotations in patch list, create new patch with pods's existing annotation and put new annotation into the patch",
+			pod:         pod,
+			patch:       make([]common.PatchOperation, 0),
+			patchPath:   constants.AnnotationPatchPath,
+			newValues: map[string]string{
+				"new_key_1": "new_value_1",
+				"new_key_2": "new_value_2",
+			},
+			expectedPatchValues: map[string]string{
+				"annotation_key_in_pod": "annotation_value_in_pod",
+				"new_key_1":             "new_value_1",
+				"new_key_2":             "new_value_2",
+			},
+			expectedPatchSize: 1,
+		}, {
+			description: "Verify if have patch on labels in patch list, won't crete new patch and will add new labels into the existing patch",
+			pod:         pod,
+			patch: []common.PatchOperation{
+				{
+					Op:   constants.AddPatchOp,
+					Path: constants.LabelPatchPath,
+					Value: map[string]string{
+						"label_key_in_patch": "label_value_in_patch",
+					},
+				},
+			},
+			patchPath: constants.LabelPatchPath,
+			newValues: map[string]string{
+				"new_key_1": "new_value_1",
+				"new_key_2": "new_value_2",
+			},
+			expectedPatchValues: map[string]string{
+				"label_key_in_patch": "label_value_in_patch",
+				"new_key_1":          "new_value_1",
+				"new_key_2":          "new_value_2",
+			},
+			expectedPatchSize: 1,
+		}, {
+			description: "Verify if have patch on annotations in patch list, won't crete new patch and will add new annotations into the existing patch",
+			pod:         pod,
+			patch: []common.PatchOperation{
+				{
+					Op:   constants.AddPatchOp,
+					Path: constants.AnnotationPatchPath,
+					Value: map[string]string{
+						"annotation_key_in_patch": "annotation_value_in_patch",
+					},
+				},
+			},
+			patchPath: constants.AnnotationPatchPath,
+			newValues: map[string]string{
+				"new_key_1": "new_value_1",
+				"new_key_2": "new_value_2",
+			},
+			expectedPatchValues: map[string]string{
+				"annotation_key_in_patch": "annotation_value_in_patch",
+				"new_key_1":               "new_value_1",
+				"new_key_2":               "new_value_2",
+			},
+			expectedPatchSize: 1,
 		},
-	})
-	newAnnotations = map[string]string{
-		"new_key_1": "new_value_1",
-		"new_key_2": "new_value_2",
 	}
-
-	patch = updateAnnotationPatch(pod, newAnnotations, patch)
-	result = fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
-
-	assert.Equal(t, len(result), 3)
-	assert.Equal(t, result["annotation_key_in_patch"], "annotation_value_in_patch")
-	assert.Equal(t, result["new_key_1"], "new_value_1")
-	assert.Equal(t, result["new_key_2"], "new_value_2")
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			patch := updatePatch(tc.pod, tc.newValues, tc.patchPath, tc.patch)
+			assert.DeepEqual(t, len(patch), tc.expectedPatchSize)
+			assert.DeepEqual(t, patch[0].Path, tc.patchPath)
+			assert.DeepEqual(t, patch[0].Value, tc.expectedPatchValues)
+		})
+	}
 }
 
 func fetchPatchValues(op string, path string, patch []common.PatchOperation) map[string]string {
