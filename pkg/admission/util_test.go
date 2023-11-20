@@ -351,7 +351,9 @@ func TestGetApplicationIDFromPod(t *testing.T) {
 
 	// test empty pod
 	pod := &v1.Pod{}
-	assert.Equal(t, getApplicationIDFromPod(pod), "")
+	appId, isFromLabel := getApplicationIDFromPod(pod)
+	assert.Equal(t, appId, "")
+	assert.Equal(t, isFromLabel, false)
 
 	// test annotation take precedence over label
 	pod = &v1.Pod{
@@ -364,7 +366,9 @@ func TestGetApplicationIDFromPod(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, getApplicationIDFromPod(pod), appName[1])
+	appId, isFromLabel = getApplicationIDFromPod(pod)
+	assert.Equal(t, appId, appName[1])
+	assert.Equal(t, isFromLabel, false)
 
 	// test pod with label only
 	pod = &v1.Pod{
@@ -374,13 +378,17 @@ func TestGetApplicationIDFromPod(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, getApplicationIDFromPod(pod), appName[0])
+	appId, isFromLabel = getApplicationIDFromPod(pod)
+	assert.Equal(t, appId, appName[0])
+	assert.Equal(t, isFromLabel, true)
 }
 
 func TestGetDisableStateAwareFromPod(t *testing.T) {
 	// test empty pod
 	pod := &v1.Pod{}
-	assert.Equal(t, getDisableStateAwareFromPod(pod), "")
+	disableStateAware, isFromLabel := getDisableStateAwareFromPod(pod)
+	assert.Equal(t, disableStateAware, "")
+	assert.Equal(t, isFromLabel, false)
 
 	// test annotation take precedence over label
 	pod = &v1.Pod{
@@ -393,7 +401,9 @@ func TestGetDisableStateAwareFromPod(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, getDisableStateAwareFromPod(pod), "false")
+	disableStateAware, isFromLabel = getDisableStateAwareFromPod(pod)
+	assert.Equal(t, disableStateAware, "false")
+	assert.Equal(t, isFromLabel, false)
 
 	// test pod with label only
 	pod = &v1.Pod{
@@ -403,5 +413,7 @@ func TestGetDisableStateAwareFromPod(t *testing.T) {
 			},
 		},
 	}
-	assert.Equal(t, getDisableStateAwareFromPod(pod), "true")
+	disableStateAware, isFromLabel = getDisableStateAwareFromPod(pod)
+	assert.Equal(t, disableStateAware, "true")
+	assert.Equal(t, isFromLabel, true)
 }

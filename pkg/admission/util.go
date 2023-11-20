@@ -33,12 +33,19 @@ func getNewApplicationInfo(pod *v1.Pod, namespace string, generateUniqueAppIds b
 	newLabels := make(map[string]string)
 	newAnnotations := make(map[string]string)
 
-	appID := getApplicationIDFromPod(pod)
-	disableStateAware := getDisableStateAwareFromPod(pod)
+	appID, isAppIdFromLabel := getApplicationIDFromPod(pod)
+	disableStateAware, isDisableStateAwareFromLabel := getDisableStateAwareFromPod(pod)
 
 	// for undefined configuration, am_conf will add 'root.default' as default queue name
 	// if a custom name is configured for default queue, it will be used instead of root.default
-	queueName := utils.GetQueueNameFromPod(pod, defaultQueueName)
+	queueName, isQueueNameFromLabel := utils.GetQueueNameFromPod(pod, defaultQueueName)
+
+	if isAppIdFromLabel || isDisableStateAwareFromLabel || isQueueNameFromLabel {
+		log.Log(log.Admission).Warn("Pod contains label for Yunikorn configuration. This is deprecated and will be ignored in a future release. Please migrate to annotation-based configuration.",
+			zap.Bool("applicationId from label", isAppIdFromLabel),
+			zap.Bool("disableStateAware from label", isDisableStateAwareFromLabel),
+			zap.Bool("queue name from label", isQueueNameFromLabel))
+	}
 
 	if appID == "" {
 		// if app id not exist, generate one
@@ -122,26 +129,26 @@ func convert2Namespace(obj interface{}) *v1.Namespace {
 	return nil
 }
 
-func getApplicationIDFromPod(pod *v1.Pod) string {
+func getApplicationIDFromPod(pod *v1.Pod) (value string, isFromLabel bool) {
 	// if existing annotation exist, it takes priority over everything else
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationApplicationID); value != "" {
-		return value
+		return value, false
 	} else if value := utils.GetPodLabelValue(pod, constants.LabelApplicationID); value != "" {
-		return value
+		return value, true
 	}
 	// application ID can be defined in Spark label
 	if value := utils.GetPodLabelValue(pod, constants.SparkLabelAppID); value != "" {
-		return value
+		return value, true
 	}
-	return ""
+	return "", false
 }
 
-func getDisableStateAwareFromPod(pod *v1.Pod) string {
+func getDisableStateAwareFromPod(pod *v1.Pod) (value string, isFromLabel bool) {
 	// if existing annotation exist, it takes priority over everything else
 	if value := utils.GetPodAnnotationValue(pod, constants.AnnotationDisableStateAware); value != "" {
-		return value
+		return value, false
 	} else if value := utils.GetPodLabelValue(pod, constants.LabelDisableStateAware); value != "" {
-		return value
+		return value, true
 	}
-	return ""
+	return "", false
 }
