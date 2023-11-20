@@ -75,8 +75,8 @@ func TestUpdateApplicationInfo(t *testing.T) {
 
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	labelsInPatch := fetchPatchValues("add", "/metadata/labels", patch)
-	annotationsInPatch := fetchPatchValues("add", "/metadata/annotations", patch)
+	labelsInPatch := fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
+	annotationsInPatch := fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
 
 	assert.Equal(t, len(patch), 2)
 	assert.Equal(t, len(labelsInPatch), 3)
@@ -111,8 +111,8 @@ func TestUpdateApplicationInfo(t *testing.T) {
 	}
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	labelsInPatch = fetchPatchValues("add", "/metadata/labels", patch)
-	annotationsInPatch = fetchPatchValues("add", "/metadata/annotations", patch)
+	labelsInPatch = fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
+	annotationsInPatch = fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
 
 	assert.Equal(t, len(patch), 2)
 	assert.Equal(t, len(labelsInPatch), 2)
@@ -147,8 +147,8 @@ func TestUpdateApplicationInfo(t *testing.T) {
 
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	labelsInPatch = fetchPatchValues("add", "/metadata/labels", patch)
-	annotationsInPatch = fetchPatchValues("add", "/metadata/annotations", patch)
+	labelsInPatch = fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
+	annotationsInPatch = fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
 
 	assert.Equal(t, len(patch), 2)
 	assert.Equal(t, len(labelsInPatch), 3)
@@ -183,8 +183,8 @@ func TestUpdateApplicationInfo(t *testing.T) {
 	}
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	labelsInPatch = fetchPatchValues("add", "/metadata/labels", patch)
-	annotationsInPatch = fetchPatchValues("add", "/metadata/annotations", patch)
+	labelsInPatch = fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
+	annotationsInPatch = fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
 
 	assert.Equal(t, len(patch), 2)
 	assert.Equal(t, len(labelsInPatch), 2)
@@ -199,15 +199,15 @@ func TestUpdateApplicationInfo(t *testing.T) {
 	// we won't create new patch and will add new labels/annotation to the existing patch.
 	patch = make([]common.PatchOperation, 0)
 	patch = append(patch, common.PatchOperation{
-		Op:   "add",
-		Path: "/metadata/labels",
+		Op:   constants.AddPatchOp,
+		Path: constants.LabelPatchPath,
 		Value: map[string]string{
 			"existingLabelKey": "existingLabelValue",
 		},
 	})
 	patch = append(patch, common.PatchOperation{
-		Op:   "add",
-		Path: "/metadata/annotations",
+		Op:   constants.AddPatchOp,
+		Path: constants.AnnotationPatchPath,
 		Value: map[string]string{
 			"existingAnnotationKey": "existingAnnotationValue",
 		},
@@ -216,8 +216,8 @@ func TestUpdateApplicationInfo(t *testing.T) {
 
 	patch = c.updateApplicationInfo("default", pod, patch)
 
-	labelsInPatch = fetchPatchValues("add", "/metadata/labels", patch)
-	annotationsInPatch = fetchPatchValues("add", "/metadata/annotations", patch)
+	labelsInPatch = fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
+	annotationsInPatch = fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
 
 	assert.Equal(t, len(labelsInPatch), 4)
 	assert.Equal(t, labelsInPatch["existingLabelKey"], "existingLabelValue")
@@ -248,7 +248,7 @@ func TestUpdateLabelPatch(t *testing.T) {
 		"new_key_2": "new_value_2",
 	}
 	patch = updateLabelPatch(pod, newLabels, patch)
-	result := fetchPatchValues("add", "/metadata/labels", patch)
+	result := fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
 
 	assert.Equal(t, len(result), 3)
 	assert.Equal(t, result["label_key_in_pod"], "label_value_in_pod")
@@ -259,8 +259,8 @@ func TestUpdateLabelPatch(t *testing.T) {
 	// won't crete new patch and will add new labels into the patch
 	patch = make([]common.PatchOperation, 0)
 	patch = append(patch, common.PatchOperation{
-		Op:   "add",
-		Path: "/metadata/labels",
+		Op:   constants.AddPatchOp,
+		Path: constants.LabelPatchPath,
 		Value: map[string]string{
 			"label_key_in_patch": "label_value_in_patch",
 		},
@@ -271,7 +271,7 @@ func TestUpdateLabelPatch(t *testing.T) {
 	}
 
 	patch = updateLabelPatch(pod, newLabels, patch)
-	result = fetchPatchValues("add", "/metadata/labels", patch)
+	result = fetchPatchValues(constants.AddPatchOp, constants.LabelPatchPath, patch)
 
 	assert.Equal(t, len(result), 3)
 	assert.Equal(t, result["label_key_in_patch"], "label_value_in_patch")
@@ -296,7 +296,7 @@ func TestUpdateAnnotationPatch(t *testing.T) {
 		"new_key_2": "new_value_2",
 	}
 	patch = updateAnnotationPatch(pod, newAnnotations, patch)
-	result := fetchPatchValues("add", "/metadata/annotations", patch)
+	result := fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
 
 	assert.Equal(t, len(result), 3)
 	assert.Equal(t, result["annotation_key_in_pod"], "annotation_value_in_pod")
@@ -307,8 +307,8 @@ func TestUpdateAnnotationPatch(t *testing.T) {
 	// won't crete new patch and will add new annotation into the patch
 	patch = make([]common.PatchOperation, 0)
 	patch = append(patch, common.PatchOperation{
-		Op:   "add",
-		Path: "/metadata/annotations",
+		Op:   constants.AddPatchOp,
+		Path: constants.AnnotationPatchPath,
 		Value: map[string]string{
 			"annotation_key_in_patch": "annotation_value_in_patch",
 		},
@@ -319,7 +319,7 @@ func TestUpdateAnnotationPatch(t *testing.T) {
 	}
 
 	patch = updateAnnotationPatch(pod, newAnnotations, patch)
-	result = fetchPatchValues("add", "/metadata/annotations", patch)
+	result = fetchPatchValues(constants.AddPatchOp, constants.AnnotationPatchPath, patch)
 
 	assert.Equal(t, len(result), 3)
 	assert.Equal(t, result["annotation_key_in_patch"], "annotation_value_in_patch")
@@ -341,8 +341,8 @@ func TestUpdateSchedulerName(t *testing.T) {
 	var patch []common.PatchOperation
 	patch = updateSchedulerName(patch)
 	assert.Equal(t, len(patch), 1)
-	assert.Equal(t, patch[0].Op, "add")
-	assert.Equal(t, patch[0].Path, "/spec/schedulerName")
+	assert.Equal(t, patch[0].Op, constants.AddPatchOp)
+	assert.Equal(t, patch[0].Path, constants.SchedulerNamePatchPath)
 	if name, ok := patch[0].Value.(string); ok {
 		assert.Equal(t, name, constants.SchedulerName)
 	} else {
@@ -928,7 +928,7 @@ func parsePatch(t *testing.T, patch []byte) []common.PatchOperation {
 func schedulerName(t *testing.T, patch []byte) string {
 	ops := parsePatch(t, patch)
 	for _, op := range ops {
-		if op.Path == "/spec/schedulerName" {
+		if op.Path == constants.SchedulerNamePatchPath {
 			return op.Value.(string)
 		}
 	}
@@ -938,7 +938,7 @@ func schedulerName(t *testing.T, patch []byte) string {
 func labels(t *testing.T, patch []byte) map[string]interface{} {
 	ops := parsePatch(t, patch)
 	for _, op := range ops {
-		if op.Path == "/metadata/labels" {
+		if op.Path == constants.LabelPatchPath {
 			return op.Value.(map[string]interface{})
 		}
 	}
@@ -948,7 +948,7 @@ func labels(t *testing.T, patch []byte) map[string]interface{} {
 func annotations(t *testing.T, patch []byte) map[string]interface{} {
 	ops := parsePatch(t, patch)
 	for _, op := range ops {
-		if op.Path == "/metadata/annotations" {
+		if op.Path == constants.AnnotationPatchPath {
 			return op.Value.(map[string]interface{})
 		}
 	}

@@ -369,8 +369,8 @@ func (c *AdmissionController) checkUserInfoAnnotation(getAnnotation func() (stri
 func updateSchedulerName(patch []common.PatchOperation) []common.PatchOperation {
 	log.Log(log.Admission).Info("updating scheduler name")
 	return append(patch, common.PatchOperation{
-		Op:    "add",
-		Path:  "/spec/schedulerName",
+		Op:    constants.AddPatchOp,
+		Path:  constants.SchedulerNamePatchPath,
 		Value: constants.SchedulerName,
 	})
 }
@@ -397,7 +397,7 @@ func (c *AdmissionController) updatePreemptionInfo(pod *v1.Pod, patch []common.P
 
 	// check for an existing patch on annotations and update it
 	for _, p := range patch {
-		if p.Op == "add" && p.Path == "/metadata/annotations" {
+		if p.Op == constants.AddPatchOp && p.Path == constants.AnnotationPatchPath {
 			if annotations, ok := p.Value.(map[string]string); ok {
 				annotations[constants.AnnotationAllowPreemption] = value
 				return patch
@@ -407,8 +407,8 @@ func (c *AdmissionController) updatePreemptionInfo(pod *v1.Pod, patch []common.P
 
 	result := updatePodAnnotation(pod, constants.AnnotationAllowPreemption, value)
 	patch = append(patch, common.PatchOperation{
-		Op:    "add",
-		Path:  "/metadata/annotations",
+		Op:    constants.AddPatchOp,
+		Path:  constants.AnnotationPatchPath,
 		Value: result,
 	})
 
@@ -416,7 +416,7 @@ func (c *AdmissionController) updatePreemptionInfo(pod *v1.Pod, patch []common.P
 }
 
 func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Pod, patch []common.PatchOperation) []common.PatchOperation {
-	log.Log(log.Admission).Info("updating pod application annotations",
+	log.Log(log.Admission).Info("updating pod application labels and annotations",
 		zap.String("podName", pod.Name),
 		zap.String("generateName", pod.GenerateName),
 		zap.String("namespace", namespace),
@@ -434,7 +434,7 @@ func (c *AdmissionController) updateApplicationInfo(namespace string, pod *v1.Po
 func updateLabelPatch(pod *v1.Pod, labels map[string]string, patch []common.PatchOperation) []common.PatchOperation {
 	// if found an existing patch on labels, add new labels to it
 	for _, p := range patch {
-		if p.Op == "add" && p.Path == "/metadata/labels" {
+		if p.Op == constants.AddPatchOp && p.Path == constants.LabelPatchPath {
 			if existingLabels, ok := p.Value.(map[string]string); ok {
 				for k, v := range labels {
 					existingLabels[k] = v
@@ -449,8 +449,8 @@ func updateLabelPatch(pod *v1.Pod, labels map[string]string, patch []common.Patc
 		existingLabels := pod.Labels
 		labels = utils.MergeMaps(existingLabels, labels)
 		patch = append(patch, common.PatchOperation{
-			Op:    "add",
-			Path:  "/metadata/labels",
+			Op:    constants.AddPatchOp,
+			Path:  constants.LabelPatchPath,
 			Value: labels,
 		})
 	}
@@ -460,7 +460,7 @@ func updateLabelPatch(pod *v1.Pod, labels map[string]string, patch []common.Patc
 func updateAnnotationPatch(pod *v1.Pod, annotations map[string]string, patch []common.PatchOperation) []common.PatchOperation {
 	// if found an existing patch on annotations, add new annotations to it
 	for _, p := range patch {
-		if p.Op == "add" && p.Path == "/metadata/annotations" {
+		if p.Op == constants.AddPatchOp && p.Path == constants.AnnotationPatchPath {
 			if existingAnnotations, ok := p.Value.(map[string]string); ok {
 				for k, v := range annotations {
 					existingAnnotations[k] = v
@@ -475,8 +475,8 @@ func updateAnnotationPatch(pod *v1.Pod, annotations map[string]string, patch []c
 		existingAnnotations := pod.Annotations
 		annotations = utils.MergeMaps(existingAnnotations, annotations)
 		patch = append(patch, common.PatchOperation{
-			Op:    "add",
-			Path:  "/metadata/annotations",
+			Op:    constants.AddPatchOp,
+			Path:  constants.AnnotationPatchPath,
 			Value: annotations,
 		})
 	}
@@ -492,8 +492,8 @@ func disableYuniKorn(namespace string, pod *v1.Pod, patch []common.PatchOperatio
 	result := updatePodAnnotation(pod, constants.AnnotationIgnoreApplication, constants.True)
 
 	patch = append(patch, common.PatchOperation{
-		Op:    "add",
-		Path:  "/metadata/annotations",
+		Op:    constants.AddPatchOp,
+		Path:  constants.AnnotationPatchPath,
 		Value: result,
 	})
 

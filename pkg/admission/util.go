@@ -57,7 +57,7 @@ func getNewApplicationInfo(pod *v1.Pod, namespace string, generateUniqueAppIds b
 	}
 
 	// we're looking forward to deprecate the labels and move everything to annotations
-	// but for backforward, we still add to labels
+	// but for backforward compatiblity, we still add to labels
 	newLabels = updateLabelIfNotPresentInPod(pod, newLabels, constants.LabelApplicationID, appID)
 	newAnnotations = updateAnnotationIfNotPresentInPod(pod, newAnnotations, constants.AnnotationApplicationID, appID)
 

@@ -110,9 +110,13 @@ const AnnotationGenerateAppID = DomainYuniKorn + "namespace.generateAppId"
 // false: do not do anything
 const AnnotationEnableYuniKorn = DomainYuniKorn + "namespace.enableYuniKorn"
 
-// Admission Controller pod label update constants
+// Admission Controller pod update constants
 const AutoGenAppPrefix = "yunikorn"
 const AutoGenAppSuffix = "autogen"
+const AddPatchOp = "add"
+const AnnotationPatchPath = "/metadata/annotations"
+const LabelPatchPath = "/metadata/labels"
+const SchedulerNamePatchPath = "/spec/schedulerName"
 
 // Compression Algorithms for schedulerConfig
 const GzipSuffix = "gz"
