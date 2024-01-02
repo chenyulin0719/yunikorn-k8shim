@@ -19,15 +19,20 @@
 package gangscheduling_test
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/reporters"
+
+	// "github.com/onsi/ginkgo/v2/internal"
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/configmanager"
+	"github.com/apache/yunikorn-k8shim/test/e2e/framework/ginkgo_writer"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/helpers/common"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/helpers/k8s"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/helpers/yunikorn"
@@ -57,6 +62,17 @@ var annotation = "ann-" + common.RandSeq(10)
 var kClient = k8s.KubeCtl{} //nolint
 
 var _ = BeforeSuite(func() {
+	// Create a local file
+	file, err := os.Create("test_output.txt")
+	if err != nil {
+		ginkgo.Fail(fmt.Sprintf("Failed to create file: %v", err))
+	}
+	writer := ginkgo_writer.NewWriter(file)
+	// ginkgo.GinkgoWriter.TeeTo(file)
+
+	ginkgo.GinkgoWriter = writer
+	// ginkgo.GinkgoLogr = ginkgo_writer.GinkgoLogrFunc(writer)
+
 	annotation = "ann-" + common.RandSeq(10)
 	yunikorn.EnsureYuniKornConfigsPresent()
 	yunikorn.UpdateConfigMapWrapper(oldConfigMap, "fifo", annotation)

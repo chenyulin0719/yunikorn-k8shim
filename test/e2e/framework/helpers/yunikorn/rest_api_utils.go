@@ -34,6 +34,7 @@ import (
 
 	"github.com/apache/yunikorn-core/pkg/webservice/dao"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/configmanager"
+	"github.com/onsi/ginkgo/v2"
 )
 
 const DefaultPartition = "default"
@@ -359,7 +360,7 @@ func (c *RClient) LogAppsInfo(ns string) error {
 	if appJSONErr != nil {
 		return appJSONErr
 	}
-	By("Apps REST API response is\n" + string(appJSON))
+	fmt.Fprintf(ginkgo.GinkgoWriter, "Apps REST API response is\n %s", string(appJSON))
 	return nil
 }
 
@@ -372,7 +373,7 @@ func (c *RClient) LogQueuesInfo() error {
 	if qJSONErr != nil {
 		return getQErr
 	}
-	By("Queues REST API response is\n" + string(qJSON))
+	fmt.Fprintf(ginkgo.GinkgoWriter, "Queues REST API response is\n%s", string(qJSON))
 	return nil
 }
 
@@ -385,7 +386,7 @@ func (c *RClient) LogNodesInfo() error {
 	if nodeJSONErr != nil {
 		return nodeJSONErr
 	}
-	By("Node REST API response is\n" + string(nodesJSON))
+	fmt.Fprintf(ginkgo.GinkgoWriter, "Node REST API response is\n%s", string(nodesJSON))
 	return nil
 }
 

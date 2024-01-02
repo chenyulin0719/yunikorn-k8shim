@@ -638,7 +638,7 @@ func LogNamespaceInfo(ns string) error {
 	if runErr != nil {
 		return runErr
 	}
-	ginkgo.By("Cluster dump output:\n" + out)
+	fmt.Fprintf(ginkgo.GinkgoWriter, "Cluster dump output:%s\n", out)
 	return nil
 }
 
@@ -1450,7 +1450,7 @@ func (k *KubeCtl) DescribeNode(node v1.Node) error {
 	if runErr != nil {
 		return runErr
 	}
-	ginkgo.By("describe output for node is:\n" + out)
+	fmt.Fprintf(ginkgo.GinkgoWriter, "describe output for node is: %s\n", out)
 	return nil
 }
 

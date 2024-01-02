@@ -68,3 +68,9 @@ jobs:
         env:
           KIND_NODE_IMAGE: ${{ matrix.k8s }}
           KIND_EXTRA_ARGS: ${{ matrix.plugin }}
+      - run: mkdir -p /tmp/artifacts
+      - run: echo hello > /tmp/artifacts/world.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-artifact
+          path: /tmp/artifacts
