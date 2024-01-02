@@ -39,8 +39,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        k8s: [v1.28.0]
-        plugin: ['']
+        k8s: [v1.28.0, v1.27.3]
+        plugin: ['', '--plugin']
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
