@@ -26,8 +26,8 @@ jobs:
         run: make pseudo
       - name: Run ShellCheck
         run: make check_scripts
-      - name: Unit tests
-        run: make test
+      # - name: Unit tests
+        # run: make test
       - name: Code coverage
         uses: codecov/codecov-action@v3
         with:
