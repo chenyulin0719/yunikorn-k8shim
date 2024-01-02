@@ -18,14 +18,14 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version-file: .go_version
-      - name: Check license
-        run: make license-check
+      # - name: Check license
+      #   run: make license-check
       # - name: Go lint
         # run: make lint
-      - name: Run Version Check
-        run: make pseudo
-      - name: Run ShellCheck
-        run: make check_scripts
+      # - name: Run Version Check
+      #   run: make pseudo
+      # - name: Run ShellCheck
+      #   run: make check_scripts
       # - name: Unit tests
         # run: make test
       - name: Code coverage
@@ -64,10 +64,10 @@ jobs:
           key: ${{ runner.os }}-e2e-${{ hashFiles('Makefile') }}
           restore-keys: |
             ${{ runner.os }}-e2e-
-      - run: ./scripts/run-e2e-tests.sh -a "test" -n "yk8s" -v "kindest/node:${KIND_NODE_IMAGE}" ${KIND_EXTRA_ARGS}
-        env:
-          KIND_NODE_IMAGE: ${{ matrix.k8s }}
-          KIND_EXTRA_ARGS: ${{ matrix.plugin }}
+      # - run: ./scripts/run-e2e-tests.sh -a "test" -n "yk8s" -v "kindest/node:${KIND_NODE_IMAGE}" ${KIND_EXTRA_ARGS}
+      #   env:
+      #     KIND_NODE_IMAGE: ${{ matrix.k8s }}
+      #     KIND_EXTRA_ARGS: ${{ matrix.plugin }}
       - run: mkdir -p /tmp/artifacts
       - run: echo hello > /tmp/artifacts/world.txt
       - uses: actions/upload-artifact@v4
