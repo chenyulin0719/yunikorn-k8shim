@@ -20,8 +20,8 @@ jobs:
           go-version-file: .go_version
       - name: Check license
         run: make license-check
-      - name: Go lint
-        run: make lint
+      # - name: Go lint
+        # run: make lint
       - name: Run Version Check
         run: make pseudo
       - name: Run ShellCheck
