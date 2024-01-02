@@ -76,5 +76,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: my-artifact
+          name: ${{ github.job }}
           path: /tmp/artifacts
