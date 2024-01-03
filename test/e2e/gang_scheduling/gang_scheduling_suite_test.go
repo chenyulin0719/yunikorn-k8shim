@@ -62,7 +62,7 @@ var kClient = k8s.KubeCtl{} //nolint
 
 var _ = BeforeSuite(func() {
 	// Create a local file for suite stdout output
-	suite_name := "gangscheduling_test"
+	suite_name := "gang_scheduling"
 	file, err := os.Create("/tmp/artifacts/" + suite_name + ".txt")
 	if err != nil {
 		ginkgo.Fail(fmt.Sprintf("Failed to create file: %v", err))
