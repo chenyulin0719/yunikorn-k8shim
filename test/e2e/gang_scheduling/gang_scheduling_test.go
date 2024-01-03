@@ -344,6 +344,37 @@ var _ = Describe("", func() {
 		// checkPlaceholderData(appDaoInfo, groupB, 3, 0, 3)
 	})
 
+	It("Dummy_Fail_Spec", func() {
+
+		pdTimeout := 20
+		gsStyle := "Hard"
+		placeholderTimeoutStr := fmt.Sprintf("%s=%d", constants.SchedulingPolicyTimeoutParam, pdTimeout)
+		gsStyleStr := fmt.Sprintf("%s=%s", constants.SchedulingPolicyStyleParam, gsStyle)
+
+		annotations := k8s.PodAnnotation{
+			TaskGroups: []cache.TaskGroup{
+				{Name: groupA, MinMember: int32(3), MinResource: minResource, NodeSelector: unsatisfiableNodeSelector},
+				{Name: groupB, MinMember: int32(3), MinResource: minResource},
+			},
+			SchedulingPolicyParams: fmt.Sprintf("%s %s", placeholderTimeoutStr, gsStyleStr),
+		}
+		createJob(appID, minResource, annotations, 1)
+
+		// Wait for placeholder timeout
+		time.Sleep(time.Duration(pdTimeout) * time.Second)
+
+		// checkAppStatus(appID, yunikorn.States().Application.Failing)
+
+		checkAppStatus(appID, "YO")
+
+		// // Ensure placeholders are timed out and allocations count is correct as app started running normal because of 'soft' gang style
+		// appDaoInfo, appDaoInfoErr := restClient.GetAppInfo(configmanager.DefaultPartition, nsQueue, appID)
+		// Ω(appDaoInfoErr).NotTo(HaveOccurred())
+		// Ω(len(appDaoInfo.PlaceholderData)).To(Equal(2), "Placeholder count is not correct")
+		// checkPlaceholderData(appDaoInfo, groupA, 3, 0, 3)
+		// checkPlaceholderData(appDaoInfo, groupB, 3, 0, 3)
+	})
+
 	AfterEach(func() {
 		testDescription := ginkgo.CurrentSpecReport()
 		// tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
