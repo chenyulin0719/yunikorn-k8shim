@@ -150,24 +150,24 @@ func LogTestClusterInfoWrapper(testName string, namespaces []string) {
 }
 
 func LogYunikornContainer(testName string) {
-	// fmt.Fprintf(ginkgo.GinkgoWriter, "%s Log yk logs info from\n", testName)
-	// err := k.SetClient()
-	// if err != nil {
-	// 	fmt.Fprintf(ginkgo.GinkgoWriter, "Error setting k8s client: %v\n", err)
-	// 	return
-	// }
-	// ykSchedName, schedErr := yunikorn.GetSchedulerPodName(k)
-	// if schedErr != nil {
-	// 	fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to get the scheduler pod name: %v\n", schedErr)
-	// 	return
-	// }
+	fmt.Fprintf(ginkgo.GinkgoWriter, "%s Log yk logs info from\n", testName)
+	err := k.SetClient()
+	if err != nil {
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Error setting k8s client: %v\n", err)
+		return
+	}
+	ykSchedName, schedErr := yunikorn.GetSchedulerPodName(k)
+	if schedErr != nil {
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to get the scheduler pod name: %v\n", schedErr)
+		return
+	}
 
-	// logBytes, getErr := k.GetPodLogs(ykSchedName, configmanager.YuniKornTestConfig.YkNamespace, configmanager.YKSchedulerContainer)
-	// if getErr != nil {
-	// 	fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to get scheduler pod logs: %v\n", getErr)
-	// 	return
-	// }
-	// fmt.Fprintf(ginkgo.GinkgoWriter, "Yunikorn Logs:%s\n", string(logBytes))
+	logBytes, getErr := k.GetPodLogs(ykSchedName, configmanager.YuniKornTestConfig.YkNamespace, configmanager.YKSchedulerContainer)
+	if getErr != nil {
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to get scheduler pod logs: %v\n", getErr)
+		return
+	}
+	fmt.Fprintf(ginkgo.GinkgoWriter, "Yunikorn Logs:%s\n", string(logBytes))
 }
 
 var Describe = ginkgo.Describe
