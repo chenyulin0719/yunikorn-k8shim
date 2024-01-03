@@ -350,7 +350,7 @@ var _ = Describe("", func() {
 		// tests.LogYunikornContainer(testDescription.FailureMessage())
 
 		if testDescription.Failed() {
-			By("Dumping cluster status to artifact...")
+			By("Dumping cluster status to artifact directory...")
 			fmt.Fprintf(ginkgo.GinkgoWriter, "Dump current spec: %s", testDescription.FullText())
 			tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
 			tests.LogYunikornContainer(testDescription.FailureMessage())
