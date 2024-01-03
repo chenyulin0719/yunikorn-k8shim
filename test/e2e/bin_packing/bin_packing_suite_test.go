@@ -16,7 +16,7 @@
  limitations under the License.
 */
 
-package gangscheduling_test
+package bin_packing
 
 import (
 	"path/filepath"
@@ -24,10 +24,10 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/reporters"
-
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 
+	"github.com/apache/yunikorn-core/pkg/common/configs"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/configmanager"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/helpers/common"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/helpers/ginkgo_writer"
@@ -39,93 +39,92 @@ func init() {
 	configmanager.YuniKornTestConfig.ParseFlags()
 }
 
-func TestGangScheduling(t *testing.T) {
-	ginkgo.ReportAfterSuite("TestGangScheduling", func(report ginkgo.Report) {
+func TestBinPacking(t *testing.T) {
+	ginkgo.ReportAfterSuite("TestBinPacking", func(report ginkgo.Report) {
 		err := common.CreateJUnitReportDir()
 		Ω(err).NotTo(gomega.HaveOccurred())
 		err = reporters.GenerateJUnitReportWithConfig(
 			report,
-			filepath.Join(configmanager.YuniKornTestConfig.LogDir, "TEST-gang_scheduling_junit.xml"),
+			filepath.Join(configmanager.YuniKornTestConfig.LogDir, "TEST-bin_packing_junit.xml"),
 			reporters.JunitReportConfig{OmitSpecLabels: true},
 		)
 		Ω(err).NotTo(HaveOccurred())
 	})
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "TestGangScheduling", ginkgo.Label("TestGangScheduling"))
+	ginkgo.RunSpecs(t, "TestBinPacking", ginkgo.Label("TestBinPacking"))
 }
 
 var oldConfigMap = new(v1.ConfigMap)
 var annotation = "ann-" + common.RandSeq(10)
 var kClient = k8s.KubeCtl{} //nolint
 
-// func GetArtifactPath() string {
-// 	artifactPath := "ARTIFACT_PATH"
-// 	defaultArtifactPath := "/tmp/e2e-test-artifacts"
-// 	if value, ok := os.LookupEnv(artifactPath); ok {
-// 		return value
-// 	}
-// 	return defaultArtifactPath
-// }
-
-// func ensureArtifactPathExists(artifactPath string) {
-// 	if _, err := os.Stat(artifactPath); os.IsNotExist(err) {
-// 		err = os.MkdirAll(artifactPath, 0755)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-// 		ginkgo.By("Created artifact directory: " + artifactPath)
-// 	} else {
-// 		ginkgo.By("Artifact directory already exists: " + artifactPath)
-// 	}
-// }
-
-// func setGinkgoWriterToFile(filePath string) {
-// 	file, err := os.Create(filePath)
-// 	if err != nil {
-// 		ginkgo.Fail(fmt.Sprintf("Failed to create artifact file: %v", err))
-// 	}
-// 	writer := ginkgo_writer.NewWriter(file)
-// 	ginkgo.GinkgoWriter = writer
-// }
-
 var _ = BeforeSuite(func() {
-	suiteName := "gang_scheduling"
+	suiteName := "bin_packing"
 	ginkgo_writer.SetGinkgoWriterToLocal(suiteName)
 
-	// file, err := os.Create(filepath.Join(artifactPath, suite_name+".txt"))
-	// if err != nil {
-	// 	ginkgo.Fail(fmt.Sprintf("Failed to create artifact file for %s : %v", suite_name, err))
-	// }
-	// // change from stdout to file
-	// writer := ginkgo_writer.NewWriter(file)
-	// ginkgo.GinkgoWriter = writer
-	// ginkgo.GinkgoLogr = ginkgo_writer.GinkgoLogrFunc(writer)
-
-	annotation = "ann-" + common.RandSeq(10)
+	Ω(kClient.SetClient()).To(BeNil())
+	/* Sample configMap. Post-update, Yunikorn will use binpacking node sort and fair app sort
+		partitions:
+	      - name: default
+	        queues:
+	        - name: root
+	          nodesortpolicy:
+				binpacking
+	          properties:
+	            application.sort.policy: fifo
+	            timestamp: "1619566965"
+	          submitacl: '*'
+	        placementrules:
+	        - name: tag
+	          create: true
+	          value: namespace
+	*/
+	By("Enabling new scheduling config with binpacking node sort policy")
 	yunikorn.EnsureYuniKornConfigsPresent()
-	yunikorn.UpdateConfigMapWrapper(oldConfigMap, "fifo", annotation)
+	yunikorn.UpdateCustomConfigMapWrapper(oldConfigMap, "fifo", annotation, func(sc *configs.SchedulerConfig) error {
+		setErr := common.SetSchedulingPolicy(sc, "default", "root", "fifo")
+		if setErr != nil {
+			return setErr
+		}
+		setErr = common.SetNodeSortPolicy(sc, "default", configs.NodeSortingPolicy{Type: "binpacking"})
+		if setErr != nil {
+			return setErr
+		}
+		_, tsErr := common.SetQueueTimestamp(sc, "default", "root")
+		if tsErr != nil {
+			return tsErr
+		}
+		_, yamlErr := common.ToYAML(sc)
+		if yamlErr != nil {
+			return yamlErr
+		}
+		return nil
+	})
+
+	// Restart yunikorn and port-forward
+	// Required to change node sort policy.
+	ginkgo.By("Restart the scheduler pod")
+	yunikorn.RestartYunikorn(&kClient)
+
+	ginkgo.By("Port-forward scheduler pod after restart")
+	yunikorn.RestorePortForwarding(&kClient)
 })
 
 var _ = AfterSuite(func() {
 	yunikorn.RestoreConfigMapWrapper(oldConfigMap, annotation)
 })
 
-// Declarations for Ginkgo DSL
 var Describe = ginkgo.Describe
-
 var It = ginkgo.It
-var PIt = ginkgo.PIt
 var By = ginkgo.By
-var BeforeSuite = ginkgo.BeforeSuite
-var AfterSuite = ginkgo.AfterSuite
 var BeforeEach = ginkgo.BeforeEach
 var AfterEach = ginkgo.AfterEach
-var DescribeTable = ginkgo.Describe
-var Entry = ginkgo.Entry
+var BeforeSuite = ginkgo.BeforeSuite
+var AfterSuite = ginkgo.AfterSuite
 
 // Declarations for Gomega Matchers
 var Equal = gomega.Equal
-var BeNumerically = gomega.BeNumerically
 var Ω = gomega.Expect
 var BeNil = gomega.BeNil
+var BeNumerically = gomega.BeNumerically
 var HaveOccurred = gomega.HaveOccurred
