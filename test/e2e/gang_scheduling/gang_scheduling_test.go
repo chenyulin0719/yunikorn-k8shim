@@ -332,8 +332,6 @@ var _ = Describe("", func() {
 		// Wait for placeholder timeout
 		time.Sleep(time.Duration(pdTimeout) * time.Second)
 
-		fmt.Fprintf(ginkgo.GinkgoWriter, "###### Outside Fail-1")
-
 		// checkAppStatus(appID, yunikorn.States().Application.Failing)
 
 		checkAppStatus(appID, "YO")
@@ -348,13 +346,13 @@ var _ = Describe("", func() {
 
 	AfterEach(func() {
 		testDescription := ginkgo.CurrentSpecReport()
-
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Dump current spec: %s", testDescription.FullText())
 		fmt.Fprintf(ginkgo.GinkgoWriter, "###### Outside Fail")
 		tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
 		tests.LogYunikornContainer(testDescription.FailureMessage())
 
 		if testDescription.Failed() {
-			fmt.Fprintf(ginkgo.GinkgoWriter, "###### In Fail")
+			fmt.Fprintf(ginkgo.GinkgoWriter, "Dump current spec: %s", testDescription.FullText())
 			// tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
 			// tests.LogYunikornContainer(testDescription.FailureMessage())
 		}
