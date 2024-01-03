@@ -22,13 +22,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/reporters"
 
-	// "github.com/onsi/ginkgo/v2/internal"
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 
@@ -64,12 +62,12 @@ var kClient = k8s.KubeCtl{} //nolint
 
 var _ = BeforeSuite(func() {
 	// Create a local file for suite stdout output
-	_, filename, _, _ := runtime.Caller(0)
-	package_name := filepath.Base(filepath.Dir(filename))
-	file, err := os.Create("/tmp/artifacts/" + package_name + ".txt")
+	suite_name := "gangscheduling_test"
+	file, err := os.Create("/tmp/artifacts/" + suite_name + ".txt")
 	if err != nil {
 		ginkgo.Fail(fmt.Sprintf("Failed to create file: %v", err))
 	}
+	// change from stdout to file
 	writer := ginkgo_writer.NewWriter(file)
 	ginkgo.GinkgoWriter = writer
 	// ginkgo.GinkgoLogr = ginkgo_writer.GinkgoLogrFunc(writer)
