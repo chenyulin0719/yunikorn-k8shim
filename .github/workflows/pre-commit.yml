@@ -75,5 +75,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
-          name: ${{ github.job }} (${{ matrix.k8s }}${{ matrix.plugin == '' && '' || matrix.plugin }}) 
+          name: ${{ github.job }} stdout (${{ matrix.k8s }}${{ matrix.plugin == '' && '' || ', ' + matrix.plugin }}) 
           path: /tmp/artifacts
