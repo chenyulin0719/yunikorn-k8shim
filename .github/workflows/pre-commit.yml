@@ -72,10 +72,10 @@ jobs:
         env:
           KIND_NODE_IMAGE: ${{ matrix.k8s }}
           KIND_EXTRA_ARGS: ${{ matrix.plugin }}
-          # ARTIFACT_PATH: $ARTIFACT_PATH
+          ARTIFACT_PATH: ${{ env.ARTIFACT_PATH }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
           name: ${{ github.job }} stdout (${{ matrix.k8s }}${{ matrix.plugin == '--plugin' && format(', {0}', matrix.plugin) || matrix.plugin }}) 
-          path: $ARTIFACT_PATH
+          path: ${{ env.ARTIFACT_PATH }}
