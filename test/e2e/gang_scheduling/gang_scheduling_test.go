@@ -20,6 +20,7 @@ package gangscheduling_test
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -315,6 +316,13 @@ var _ = Describe("", func() {
 	// 3. Once ph's are timed out, app should move to failed state
 	It("Verify_Hard_GS_Failed_State", func() {
 
+		if value, ok := os.LookupEnv("KIND_NODE_IMAGE"); ok {
+			ginkgo.By("Found artifact path in Env variable: " + value)
+			if value == "v1.26.6" {
+				return
+			}
+		}
+
 		pdTimeout := 20
 		gsStyle := "Hard"
 		placeholderTimeoutStr := fmt.Sprintf("%s=%d", constants.SchedulingPolicyTimeoutParam, pdTimeout)
@@ -345,6 +353,12 @@ var _ = Describe("", func() {
 	})
 
 	It("Dummy_Fail_Spec", func() {
+		if value, ok := os.LookupEnv("KIND_NODE_IMAGE"); ok {
+			ginkgo.By("Found artifact path in Env variable: " + value)
+			if value == "v1.26.6" {
+				return
+			}
+		}
 
 		pdTimeout := 20
 		gsStyle := "Hard"

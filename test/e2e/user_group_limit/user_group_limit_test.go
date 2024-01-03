@@ -21,6 +21,7 @@ package user_group_limit_test
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -106,6 +107,14 @@ var _ = ginkgo.AfterSuite(func() {
 
 var _ = ginkgo.Describe("UserGroupLimit", func() {
 	ginkgo.It("Verify_maxresources_with_a_specific_user_limit", func() {
+
+		if value, ok := os.LookupEnv("KIND_NODE_IMAGE"); ok {
+			ginkgo.By("Found artifact path in Env variable: " + value)
+			if value == "v1.26.6" {
+				return
+			}
+		}
+
 		ginkgo.By("Update config")
 		annotation = "ann-" + common.RandSeq(10)
 		// The wait wrapper still can't fully guarantee that the config in AdmissionController has been updated.

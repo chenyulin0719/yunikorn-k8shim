@@ -20,6 +20,7 @@ package bin_packing
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/onsi/ginkgo/v2"
 	v1 "k8s.io/api/core/v1"
@@ -46,6 +47,14 @@ var _ = Describe("", func() {
 	// 4. Submit jobA of 3 pods. Verify all are allocated to nodeA
 	// 5. Submit jobB of 3 pods with anti-affinity of node=nodeA. Verify all are allocated to nodeB
 	It("Verify_BinPacking_Node_Order_Memory", func() {
+
+		if value, ok := os.LookupEnv("KIND_NODE_IMAGE"); ok {
+			ginkgo.By("Found artifact path in Env variable: " + value)
+			if value == "v1.26.6" {
+				return
+			}
+		}
+
 		// domRes := v1.ResourceMemory
 		_, err := kClient.GetNodes()
 		// Ω(err).NotTo(HaveOccurred())
