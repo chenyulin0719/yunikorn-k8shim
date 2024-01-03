@@ -346,14 +346,14 @@ var _ = Describe("", func() {
 
 	AfterEach(func() {
 		testDescription := ginkgo.CurrentSpecReport()
-		tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
-		tests.LogYunikornContainer(testDescription.FailureMessage())
+		// tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
+		// tests.LogYunikornContainer(testDescription.FailureMessage())
 
 		if testDescription.Failed() {
 			By("Dumping cluster status to artifact...")
 			fmt.Fprintf(ginkgo.GinkgoWriter, "Dump current spec: %s", testDescription.FullText())
-			// tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
-			// tests.LogYunikornContainer(testDescription.FailureMessage())
+			tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
+			tests.LogYunikornContainer(testDescription.FailureMessage())
 		}
 
 		By(fmt.Sprintf("Cleanup jobs: %v", jobNames))

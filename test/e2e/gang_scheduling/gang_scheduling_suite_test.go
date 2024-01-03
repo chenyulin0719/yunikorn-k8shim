@@ -60,16 +60,51 @@ var oldConfigMap = new(v1.ConfigMap)
 var annotation = "ann-" + common.RandSeq(10)
 var kClient = k8s.KubeCtl{} //nolint
 
-var _ = BeforeSuite(func() {
-	// Create a local file for suite stdout output
-	suite_name := "gang_scheduling"
-	file, err := os.Create("/tmp/artifacts/" + suite_name + ".txt")
-	if err != nil {
-		ginkgo.Fail(fmt.Sprintf("Failed to create file: %v", err))
+func GetArtifactPath() string {
+	artifactPath := "ARTIFACT_PATH"
+	defaultArtifactPath := "/tmp/e2e-test-artifacts"
+	if value, ok := os.LookupEnv(artifactPath); ok {
+		return value
 	}
-	// change from stdout to file
+	return defaultArtifactPath
+}
+
+func ensureArtifactPathExists(artifactPath string) {
+	if _, err := os.Stat(artifactPath); os.IsNotExist(err) {
+		err = os.MkdirAll(artifactPath, 0755)
+		if err != nil {
+			panic(err)
+		}
+		ginkgo.By("Created artifact directory: " + artifactPath)
+	} else {
+		ginkgo.By("Artifact directory already exists: " + artifactPath)
+	}
+}
+
+func setGinkgoWriterToFile(filePath string) {
+	file, err := os.Create(filePath)
+	if err != nil {
+		ginkgo.Fail(fmt.Sprintf("Failed to create artifact file: %v", err))
+	}
 	writer := ginkgo_writer.NewWriter(file)
 	ginkgo.GinkgoWriter = writer
+}
+
+var _ = BeforeSuite(func() {
+
+	// Create a local file for suite stdout output
+	suiteName := "gang_scheduling"
+	artifactPath := GetArtifactPath()
+	ensureArtifactPathExists(artifactPath)
+	setGinkgoWriterToFile(filepath.Join(artifactPath, suiteName+".txt"))
+
+	// file, err := os.Create(filepath.Join(artifactPath, suite_name+".txt"))
+	// if err != nil {
+	// 	ginkgo.Fail(fmt.Sprintf("Failed to create artifact file for %s : %v", suite_name, err))
+	// }
+	// // change from stdout to file
+	// writer := ginkgo_writer.NewWriter(file)
+	// ginkgo.GinkgoWriter = writer
 	// ginkgo.GinkgoLogr = ginkgo_writer.GinkgoLogrFunc(writer)
 
 	annotation = "ann-" + common.RandSeq(10)

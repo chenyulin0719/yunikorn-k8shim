@@ -36,6 +36,8 @@ jobs:
   e2e-tests:
     needs: build
     runs-on: ubuntu-latest
+    env:
+      ARTIFACT_PATH: "/tmp/e2e-test-artifacts-env"
     strategy:
       fail-fast: false
       matrix:
@@ -65,16 +67,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-e2e-
       - name: Create artifacts stage folder
-        run: mkdir -p /tmp/artifacts
+        run: mkdir -p /tmp/e2e-test-artifacts
       - run: ./scripts/run-e2e-tests.sh -a "test" -n "yk8s" -v "kindest/node:${KIND_NODE_IMAGE}" ${KIND_EXTRA_ARGS}
         env:
           KIND_NODE_IMAGE: ${{ matrix.k8s }}
           KIND_EXTRA_ARGS: ${{ matrix.plugin }}
-      - run: echo hello > /tmp/artifacts/world.txt
-        if: ${{ failure() }}
+          # ARTIFACT_PATH: $ARTIFACT_PATH
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         if: ${{ failure() }}
         with:
           name: ${{ github.job }} stdout (${{ matrix.k8s }}${{ matrix.plugin == '--plugin' && format(', {0}', matrix.plugin) || matrix.plugin }}) 
-          path: /tmp/artifacts
+          path: $ARTIFACT_PATH
