@@ -579,7 +579,7 @@ var _ = ginkgo.Describe("UserGroupLimit", func() {
 		testDescription := ginkgo.CurrentSpecReport()
 		if testDescription.Failed() {
 			ginkgo.By(fmt.Sprintf("Dumping cluster status to artifact directory... (spec:%s)", testDescription.FullText()))
-			fmt.Fprintf(ginkgo.GinkgoWriter, "Dump current spec: %s", testDescription.FullText())
+			fmt.Fprintf(ginkgo.GinkgoWriter, "Dump current spec: %s\n", testDescription.FullText())
 			tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns.Name})
 			tests.LogYunikornContainer(testDescription.FailureMessage())
 		}
