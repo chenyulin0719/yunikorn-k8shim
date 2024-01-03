@@ -83,8 +83,6 @@ var _ = Describe("", func() {
 
 	AfterEach(func() {
 		testDescription := ginkgo.CurrentSpecReport()
-		// tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
-		// tests.LogYunikornContainer(testDescription.FailureMessage())
 
 		if testDescription.Failed() {
 			By(fmt.Sprintf("Dumping cluster status to artifact directory... (spec:%s)", testDescription.FullText()))
