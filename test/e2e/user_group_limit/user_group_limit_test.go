@@ -601,7 +601,7 @@ var _ = ginkgo.Describe("UserGroupLimit", func() {
 
 		// reset config
 		ginkgo.By("Restoring YuniKorn configuration")
-		yunikorn.RestoreConfigMapWrapper(oldConfigMap, annotation)
+		// yunikorn.RestoreConfigMapWrapper(oldConfigMap, annotation)
 	})
 })
 
