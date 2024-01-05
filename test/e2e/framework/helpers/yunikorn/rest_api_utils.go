@@ -185,7 +185,7 @@ func (c *RClient) GetCompletedAppInfo(partition string, appID string) (*dao.Appl
 			return app, nil
 		}
 	}
-	return nil, fmt.Errorf(fmt.Sprintf("App is not in 'Failed', 'Expired', 'Completed' state."))
+	return nil, fmt.Errorf("App is not in 'Failed', 'Expired', 'Completed' state.")
 }
 
 func (c *RClient) GetAllocationLog(partition string, queueName string, appID string, podName string) ([]*dao.AllocationAskLogDAOInfo, error) {
