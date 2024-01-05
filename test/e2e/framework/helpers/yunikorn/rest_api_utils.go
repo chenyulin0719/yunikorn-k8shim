@@ -170,7 +170,7 @@ func (c *RClient) GetAppInfo(partition string, queueName string, appID string) (
 }
 
 func (c *RClient) GetCompletedAppInfo(partition string, appID string) (*dao.ApplicationDAOInfo, error) {
-	req, err := c.newRequest("GET", fmt.Sprintf(configmanager.CompletedAppPath, partition), nil)
+	req, err := c.newRequest("GET", fmt.Sprintf(configmanager.CompletedAppsPath, partition), nil)
 	if err != nil {
 		return nil, err
 	}
