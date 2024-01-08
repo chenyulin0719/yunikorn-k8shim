@@ -93,7 +93,7 @@ func RestoreConfigMapWrapper(oldConfigMap *v1.ConfigMap, annotation string) {
 
 func DumpClusterInfoIfSpecFailed(suiteName string, namespaces []string) {
 	// should call this function in ginkgo.AfterEach
-	// write cluster info to files by log type
+	// write cluster info to files by log type (ykFullStateDump, k8sClusterInfo, ykContainerLog)
 	testDescription := ginkgo.CurrentSpecReport()
 	if testDescription.Failed() {
 		specName := testDescription.LeafNodeText
