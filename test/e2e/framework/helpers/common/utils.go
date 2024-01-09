@@ -269,11 +269,20 @@ func getLogFilePath(suiteName string, specName string, logType string, extention
 		return "", runErr
 	}
 	gitRoot = strings.TrimSpace(gitRoot)
-	suiteName = strings.TrimSpace(suiteName)
-	specName = strings.TrimSpace(specName)
+	suiteName = replaceInvalidFileChars(strings.TrimSpace(suiteName))
+	specName = replaceInvalidFileChars(strings.TrimSpace(specName))
 
 	dumpLogFilePath := filepath.Join(gitRoot, configmanager.LogPath, suiteName, fmt.Sprintf("%s_%s.%s", specName, logType, extention))
 	return dumpLogFilePath, nil
+}
+
+func replaceInvalidFileChars(str string) string {
+	// some charaters are not allowed in upload-artifact : https://github.com/actions/upload-artifact/issues/333
+	invalidChars := []string{"\"", ":", "<", ">", "|", "*", "?", "\r", "\n"}
+	for _, char := range invalidChars {
+		str = strings.ReplaceAll(str, char, "_")
+	}
+	return str
 }
 
 func GetSuiteName(testFilePath string) string {
