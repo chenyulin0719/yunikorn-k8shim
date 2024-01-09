@@ -165,7 +165,6 @@ var _ = Describe("FairScheduling:", func() {
 					return true, nil
 				}
 				return false, nil
-				tests.ForceFail()
 			})
 			Ω(err).NotTo(HaveOccurred())
 		}
