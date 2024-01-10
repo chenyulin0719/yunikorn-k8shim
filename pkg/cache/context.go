@@ -192,6 +192,9 @@ func (ctx *Context) updateNodeInternal(node *v1.Node, register bool) {
 		if !common.Equals(prevCapacity, newCapacity) {
 			// update capacity
 			if capacity, occupied, ok := ctx.schedulerCache.UpdateCapacity(node.Name, newCapacity); ok {
+
+				log.Log(log.ShimContext).Info(fmt.Sprintf("### updateNodeResources when prevCapacity!=newCapacity, node.Name: %v,capacity: %v,occupied: %v, newReady: %v", node.Name, capacity, occupied, newReady))
+
 				if err := ctx.updateNodeResources(node, capacity, occupied, newReady); err != nil {
 					log.Log(log.ShimContext).Warn("Failed to update node capacity", zap.Error(err))
 				}
@@ -201,6 +204,9 @@ func (ctx *Context) updateNodeInternal(node *v1.Node, register bool) {
 		} else if newReady != prevReady {
 			// update readiness
 			if capacity, occupied, ok := ctx.schedulerCache.SnapshotResources(node.Name); ok {
+
+				log.Log(log.ShimContext).Info(fmt.Sprintf("### updateNodeResources when newReady != prevReady, node.Name: %v,capacity: %v,occupied: %v, newReady: %v", node.Name, capacity, occupied, newReady))
+
 				if err := ctx.updateNodeResources(node, capacity, occupied, newReady); err != nil {
 					log.Log(log.ShimContext).Warn("Failed to update node readiness", zap.Error(err))
 				}
@@ -462,6 +468,7 @@ func (ctx *Context) deleteForeignPod(pod *v1.Pod) {
 				zap.String("podStatusCurrent", string(pod.Status.Phase)))
 			// this means pod is terminated
 			// we need sub the occupied resource and re-sync with the scheduler-core
+
 			ctx.updateNodeOccupiedResources(pod.Spec.NodeName, pod.Namespace, pod.Name, common.GetPodResource(pod), schedulercache.SubOccupiedResource)
 		} else {
 			// pod is orphaned (references an unknown node)
@@ -479,6 +486,8 @@ func (ctx *Context) updateNodeOccupiedResources(nodeName string, namespace strin
 		return
 	}
 	if node, capacity, occupied, ok := ctx.schedulerCache.UpdateOccupiedResource(nodeName, namespace, podName, resource, opt); ok {
+		log.Log(log.ShimContext).Info(fmt.Sprintf("### updateNodeResources in updateNodeOccupiedResources, node.Name: %v,capacity: %v,occupied: %v, newReady: %v", node.Name, capacity, occupied, hasReadyCondition(node)))
+
 		if err := ctx.updateNodeResources(node, capacity, occupied, hasReadyCondition(node)); err != nil {
 			log.Log(log.ShimContext).Warn("scheduler rejected update to node occupied resources", zap.Error(err))
 		}
@@ -1590,6 +1599,7 @@ func (ctx *Context) decommissionNode(node *v1.Node) error {
 
 func (ctx *Context) updateNodeResources(node *v1.Node, capacity *si.Resource, occupied *si.Resource, ready bool) error {
 	request := common.CreateUpdateRequestForUpdatedNode(node.Name, capacity, occupied, ready)
+	log.Log(log.ShimContext).Info(fmt.Sprintf("### Shim trigger SchedulerAPI() request, node.Name: %v,capacity: %v,occupied: %v, ready: %v", node.Name, capacity, occupied, ready))
 	return ctx.apiProvider.GetAPIs().SchedulerAPI.UpdateNode(request)
 }
 

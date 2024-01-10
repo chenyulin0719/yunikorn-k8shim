@@ -117,6 +117,33 @@ func DumpClusterInfoIfSpecFailed(suiteName string, namespaces []string) {
 	}
 }
 
+func AlwaysDumpClusterInfoIfSpecFailed(suiteName string, namespaces []string) {
+	// should call this function in ginkgo.AfterEach
+	// write cluster info to files by log type (ykFullStateDump, k8sClusterInfo, ykContainerLog)
+	testDescription := ginkgo.CurrentSpecReport()
+	alwaysPrint := true
+	if alwaysPrint {
+		specName := testDescription.LeafNodeText
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Logging yk fullstatedump, spec: %s\n", specName)
+		err := dumpYKFullStateDump(suiteName, specName)
+		if err != nil {
+			fmt.Fprintf(ginkgo.GinkgoWriter, "Fail to log yk fullstatedump, spec: %s, err: %v\n", specName, err)
+		}
+
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Logging k8s cluster info, spec: %s\n", specName)
+		err = dumpKubernetesClusterInfo(suiteName, specName, namespaces)
+		if err != nil {
+			fmt.Fprintf(ginkgo.GinkgoWriter, "Fail to log k8s cluster info, spec: %s, err: %v\n", specName, err)
+		}
+
+		fmt.Fprintf(ginkgo.GinkgoWriter, "Logging yk container logs, spec: %s\n", specName)
+		err = dumpYunikornContainer(suiteName, specName)
+		if err != nil {
+			fmt.Fprintf(ginkgo.GinkgoWriter, "Fail to log yk container logs, spec: %s, err: %v\n", specName, err)
+		}
+	}
+}
+
 func dumpYKFullStateDump(suiteName string, specName string) error {
 	file, err := common.CreateLogFile(suiteName, specName, "ykFullStateDump", "json")
 	if err != nil {

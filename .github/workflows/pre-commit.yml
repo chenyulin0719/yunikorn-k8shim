@@ -74,3 +74,8 @@ jobs:
         with:
           name: ${{ github.job }} stdout (${{ matrix.k8s }}${{ matrix.plugin == '--plugin' && format(', {0}', matrix.plugin) || matrix.plugin }}) 
           path: build/e2e
+      - name: Upload artifacts-Success
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.job }} stdout (${{ matrix.k8s }}${{ matrix.plugin == '--plugin' && format(', {0}', matrix.plugin) || matrix.plugin }}) 
+          path: build/e2e
