@@ -68,8 +68,8 @@ github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/cespare/xxhash/v2 v2.1.2/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
-github.com/chenyulin0719/yunikorn-core v0.0.0-20240111053258-2da4506072cc h1:RSQQofWdT0dVDM1NRMauZXpcksBqM6Y78ITOOZNCt74=
-github.com/chenyulin0719/yunikorn-core v0.0.0-20240111053258-2da4506072cc/go.mod h1:lSAZNt47HGygsVG6mJTl0rW7acBl3tbN/Fg2wGJXYs8=
+github.com/chenyulin0719/yunikorn-core v0.0.0-20240111131006-cb87127f67b6 h1:/Xd6H5fu+y/uVB7uDA+Ydv4c3UcgO4fF5doD3efdp3w=
+github.com/chenyulin0719/yunikorn-core v0.0.0-20240111131006-cb87127f67b6/go.mod h1:lSAZNt47HGygsVG6mJTl0rW7acBl3tbN/Fg2wGJXYs8=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
