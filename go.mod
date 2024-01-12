@@ -163,7 +163,7 @@ require (
 
 replace (
 	// remove go routine, no delay
-	github.com/apache/yunikorn-core => github.com/chenyulin0719/yunikorn-core v0.0.0-20240112051018-bb832ba4a867
+	github.com/apache/yunikorn-core => github.com/chenyulin0719/yunikorn-core v0.0.0-20240112055647-aa40fd777cb6
 	golang.org/x/crypto => golang.org/x/crypto v0.14.0
 	golang.org/x/lint => golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/net => golang.org/x/net v0.17.0
