@@ -19,11 +19,9 @@
 package preemption_test
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/onsi/ginkgo/v2"
-	"github.com/onsi/ginkgo/v2/reporters"
 	"github.com/onsi/gomega"
 
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/configmanager"
@@ -34,14 +32,14 @@ func init() {
 }
 
 func TestPreemption(t *testing.T) {
-	ginkgo.ReportAfterSuite("TestPreemption", func(report ginkgo.Report) {
-		err := reporters.GenerateJUnitReportWithConfig(
-			report,
-			filepath.Join(configmanager.YuniKornTestConfig.LogDir, "TEST-preemption_junit.xml"),
-			reporters.JunitReportConfig{OmitSpecLabels: true},
-		)
-		Ω(err).NotTo(HaveOccurred())
-	})
+	// ginkgo.ReportAfterSuite("TestPreemption", func(report ginkgo.Report) {
+	// err := reporters.GenerateJUnitReportWithConfig(
+	// 	report,
+	// 	filepath.Join(configmanager.YuniKornTestConfig.LogDir, "TEST-preemption_junit.xml"),
+	// 	reporters.JunitReportConfig{OmitSpecLabels: true},
+	// )
+	// Ω(err).NotTo(HaveOccurred())
+	// })
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "TestPreemption", ginkgo.Label("TestPreemption"))
 }
