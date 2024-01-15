@@ -245,12 +245,12 @@ func TestCreateUpdateRequestForUpdatedNode(t *testing.T) {
 	capacity := NewResourceBuilder().AddResource(common.Memory, 200).AddResource(common.CPU, 2).Build()
 	occupied := NewResourceBuilder().AddResource(common.Memory, 50).AddResource(common.CPU, 1).Build()
 	ready := true
-	request := CreateUpdateRequestForUpdatedNode(nodeID, capacity, occupied, ready)
+	request := CreateUpdateRequestForUpdatedNode(nodeID, capacity, occupied, 0, ready)
 	assert.Equal(t, len(request.Nodes), 1)
 	assert.Equal(t, request.Nodes[0].NodeID, nodeID)
 	assert.Equal(t, request.Nodes[0].SchedulableResource, capacity)
 	assert.Equal(t, request.Nodes[0].OccupiedResource, occupied)
-	assert.Equal(t, len(request.Nodes[0].Attributes), 1)
+	assert.Equal(t, len(request.Nodes[0].Attributes), 2)
 	assert.Equal(t, request.Nodes[0].Attributes[common.NodeReadyAttribute], strconv.FormatBool(ready))
 }
 

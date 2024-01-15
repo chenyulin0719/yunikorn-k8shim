@@ -169,7 +169,7 @@ func TestUpdateNodes(t *testing.T) {
 	ctx.addNode(&oldNode)
 	ctx.updateNode(&oldNode, &newNode)
 
-	_, capacity, _, ok := ctx.schedulerCache.UpdateOccupiedResource(
+	_, capacity, _, _, ok := ctx.schedulerCache.UpdateOccupiedResource(
 		"host0001", "n/a", "n/a", nil, schedulercache.AddOccupiedResource)
 	assert.Assert(t, ok, "unable to retrieve node capacity")
 	assert.Equal(t, int64(2048*1000*1000), capacity.Resources[siCommon.Memory].Value)
@@ -2055,7 +2055,7 @@ func TestInitializeState(t *testing.T) {
 	assert.Equal(t, pc.Annotations[constants.AnnotationAllowPreemption], constants.True, "wrong allow-preemption value")
 
 	// verify occupied / capacity on node
-	capacity, occupied, ok := context.schedulerCache.SnapshotResources("node1")
+	capacity, occupied, _, ok := context.schedulerCache.SnapshotResources("node1")
 	assert.Assert(t, ok, "Unable to retrieve node resources")
 	expectedCapacity := common.ParseResource("4", "10G")
 	assert.Equal(t, expectedCapacity.Resources["vcore"].Value, capacity.Resources["vcore"].Value, "wrong capacity vcore")

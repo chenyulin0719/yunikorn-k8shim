@@ -56,19 +56,20 @@ const (
 // to in-progress to signify that the default scheduler is responsible for fulfilling the allocation. Once PostBind()
 // is called in the plugin to signify completion of the allocation, it is removed.
 type SchedulerCache struct {
-	nodesMap              map[string]*framework.NodeInfo // node name to NodeInfo map
-	nodeCapacity          map[string]*si.Resource        // node name to node resource capacity
-	nodeOccupied          map[string]*si.Resource        // node name to node occupied resources
-	podsMap               map[string]*v1.Pod
-	pcMap                 map[string]*schedulingv1.PriorityClass
-	assignedPods          map[string]string  // map of pods to the node they are currently assigned to
-	assumedPods           map[string]bool    // map of assumed pods, value indicates if pod volumes are all bound
-	orphanedPods          map[string]*v1.Pod // map of orphaned pods, keyed by pod UID
-	pendingAllocations    map[string]string  // map of pod to node ID, presence indicates a pending allocation for scheduler
-	inProgressAllocations map[string]string  // map of pod to node ID, presence indicates an in-process allocation for scheduler
-	pvcRefCounts          map[string]map[string]int
-	lock                  sync.RWMutex
-	clients               *client.Clients // client APIs
+	nodesMap                map[string]*framework.NodeInfo // node name to NodeInfo map
+	nodeCapacity            map[string]*si.Resource        // node name to node resource capacity
+	nodeOccupied            map[string]*si.Resource        // node name to node occupied resources
+	nodeLastUpdatedSequence map[string]uint64
+	podsMap                 map[string]*v1.Pod
+	pcMap                   map[string]*schedulingv1.PriorityClass
+	assignedPods            map[string]string  // map of pods to the node they are currently assigned to
+	assumedPods             map[string]bool    // map of assumed pods, value indicates if pod volumes are all bound
+	orphanedPods            map[string]*v1.Pod // map of orphaned pods, keyed by pod UID
+	pendingAllocations      map[string]string  // map of pod to node ID, presence indicates a pending allocation for scheduler
+	inProgressAllocations   map[string]string  // map of pod to node ID, presence indicates an in-process allocation for scheduler
+	pvcRefCounts            map[string]map[string]int
+	lock                    sync.RWMutex
+	clients                 *client.Clients // client APIs
 
 	// cached data, re-calculated on demand from nodesMap
 	nodesInfo                        []*framework.NodeInfo
@@ -78,18 +79,19 @@ type SchedulerCache struct {
 
 func NewSchedulerCache(clients *client.Clients) *SchedulerCache {
 	cache := &SchedulerCache{
-		nodesMap:              make(map[string]*framework.NodeInfo),
-		nodeCapacity:          make(map[string]*si.Resource),
-		nodeOccupied:          make(map[string]*si.Resource),
-		podsMap:               make(map[string]*v1.Pod),
-		pcMap:                 make(map[string]*schedulingv1.PriorityClass),
-		assignedPods:          make(map[string]string),
-		assumedPods:           make(map[string]bool),
-		orphanedPods:          make(map[string]*v1.Pod),
-		pendingAllocations:    make(map[string]string),
-		inProgressAllocations: make(map[string]string),
-		pvcRefCounts:          make(map[string]map[string]int),
-		clients:               clients,
+		nodesMap:                make(map[string]*framework.NodeInfo),
+		nodeCapacity:            make(map[string]*si.Resource),
+		nodeOccupied:            make(map[string]*si.Resource),
+		nodeLastUpdatedSequence: make(map[string]uint64),
+		podsMap:                 make(map[string]*v1.Pod),
+		pcMap:                   make(map[string]*schedulingv1.PriorityClass),
+		assignedPods:            make(map[string]string),
+		assumedPods:             make(map[string]bool),
+		orphanedPods:            make(map[string]*v1.Pod),
+		pendingAllocations:      make(map[string]string),
+		inProgressAllocations:   make(map[string]string),
+		pvcRefCounts:            make(map[string]map[string]int),
+		clients:                 clients,
 	}
 	return cache
 }
@@ -185,6 +187,7 @@ func (cache *SchedulerCache) updateNode(node *v1.Node) (*v1.Node, []*v1.Pod) {
 		cache.nodesMap[node.Name] = nodeInfo
 		cache.nodeCapacity[node.Name] = common.GetNodeResource(&node.Status)
 		cache.nodeOccupied[node.Name] = common.NewResourceBuilder().Build()
+		cache.nodeLastUpdatedSequence[node.Name] = 0
 		cache.nodesInfo = nil
 		nodeInfo.SetNode(node)
 
@@ -249,46 +252,53 @@ func (cache *SchedulerCache) removeNode(node *v1.Node) (*v1.Node, []*v1.Pod) {
 	return result, orphans
 }
 
-func (cache *SchedulerCache) SnapshotResources(nodeName string) (capacity *si.Resource, occupied *si.Resource, ok bool) {
+func (cache *SchedulerCache) SnapshotResources(nodeName string) (capacity *si.Resource, occupied *si.Resource, nodeLastUpdatedSequence uint64, ok bool) {
 	cache.lock.RLock()
 	defer cache.lock.RUnlock()
 
 	occupied, ok1 := cache.nodeOccupied[nodeName]
 	capacity, ok2 := cache.nodeCapacity[nodeName]
-	if !ok1 || !ok2 {
+	nodeLastUpdatedSequence, ok3 := cache.nodeLastUpdatedSequence[nodeName]
+	if !ok1 || !ok2 || !ok3 {
 		log.Log(log.ShimCacheExternal).Warn("Unable to snapshot resources for node", zap.String("nodeName", nodeName))
-		return nil, nil, false
+		return nil, nil, 0, false
 	}
-	return capacity, occupied, true
+	return capacity, occupied, nodeLastUpdatedSequence, true
 }
 
-func (cache *SchedulerCache) UpdateCapacity(nodeName string, resource *si.Resource) (capacity *si.Resource, occupied *si.Resource, ok bool) {
+func (cache *SchedulerCache) UpdateCapacity(nodeName string, resource *si.Resource) (capacity *si.Resource, occupied *si.Resource, nodeLastUpdatedSequence uint64, ok bool) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
 	occupied, ok1 := cache.nodeOccupied[nodeName]
 	_, ok2 := cache.nodeCapacity[nodeName]
-	if !ok1 || !ok2 {
+	_, ok3 := cache.nodeLastUpdatedSequence[nodeName]
+	if !ok1 || !ok2 || !ok3 {
 		log.Log(log.ShimCacheExternal).Warn("Unable to update capacity for node", zap.String("nodeName", nodeName))
-		return nil, nil, false
+		return nil, nil, 0, false
 	}
 	cache.nodeCapacity[nodeName] = resource
-	return resource, occupied, true
+	cache.nodeLastUpdatedSequence[nodeName]++
+
+	return resource, occupied, cache.nodeLastUpdatedSequence[nodeName], true
 }
 
-func (cache *SchedulerCache) UpdateOccupiedResource(nodeName string, namespace string, podName string, resource *si.Resource, opt UpdateType) (node *v1.Node, capacity *si.Resource, occupied *si.Resource, ok bool) {
+func (cache *SchedulerCache) UpdateOccupiedResource(nodeName string, namespace string, podName string, resource *si.Resource, opt UpdateType) (node *v1.Node, capacity *si.Resource, occupied *si.Resource, nodeLastUpdatedSequence uint64, ok bool) {
 	cache.lock.Lock()
 	defer cache.lock.Unlock()
 
 	nodeInfo, ok1 := cache.nodesMap[nodeName]
 	occupied, ok2 := cache.nodeOccupied[nodeName]
 	capacity, ok3 := cache.nodeCapacity[nodeName]
-	if !ok1 || !ok2 || !ok3 {
+	nodeLastUpdatedSequence, ok4 := cache.nodeLastUpdatedSequence[nodeName]
+
+	if !ok1 || !ok2 || !ok3 || !ok4 {
 		log.Log(log.ShimCacheExternal).Warn("Unable to update occupied resources for node",
 			zap.String("nodeName", nodeName),
 			zap.String("namespace", namespace),
-			zap.String("podName", podName))
-		return nil, nil, nil, false
+			zap.String("podName", podName),
+			zap.Uint64("nodeLastUpdatedSequence", nodeLastUpdatedSequence))
+		return nil, nil, nil, 0, false
 	}
 	node = nodeInfo.Node()
 
@@ -301,6 +311,8 @@ func (cache *SchedulerCache) UpdateOccupiedResource(nodeName string, namespace s
 			zap.Stringer("occupied", resource))
 		occupied = common.Add(occupied, resource)
 		cache.nodeOccupied[nodeName] = occupied
+		cache.nodeLastUpdatedSequence[nodeName]++
+		nodeLastUpdatedSequence = cache.nodeLastUpdatedSequence[nodeName]
 	case SubOccupiedResource:
 		log.Log(log.ShimCacheExternal).Info("Subtracting occupied resources from node",
 			zap.String("nodeID", nodeName),
@@ -309,10 +321,13 @@ func (cache *SchedulerCache) UpdateOccupiedResource(nodeName string, namespace s
 			zap.Stringer("occupied", resource))
 		occupied = common.Sub(occupied, resource)
 		cache.nodeOccupied[nodeName] = occupied
+		cache.nodeLastUpdatedSequence[nodeName]++
+		nodeLastUpdatedSequence = cache.nodeLastUpdatedSequence[nodeName]
 	default:
 		// noop
 	}
-	return node, capacity, occupied, true
+
+	return node, capacity, occupied, nodeLastUpdatedSequence, true
 }
 
 func (cache *SchedulerCache) GetPriorityClass(name string) *schedulingv1.PriorityClass {

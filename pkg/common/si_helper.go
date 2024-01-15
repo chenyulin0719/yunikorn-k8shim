@@ -198,11 +198,12 @@ func CreateUpdateRequestForNewNode(nodeID string, nodeLabels map[string]string, 
 
 // CreateUpdateRequestForUpdatedNode builds a NodeRequest for any node updates like capacity,
 // ready status flag etc
-func CreateUpdateRequestForUpdatedNode(nodeID string, capacity *si.Resource, occupied *si.Resource, ready bool) *si.NodeRequest {
+func CreateUpdateRequestForUpdatedNode(nodeID string, capacity *si.Resource, occupied *si.Resource, nodeLastUpdatedSequence uint64, ready bool) *si.NodeRequest {
 	nodeInfo := &si.NodeInfo{
 		NodeID: nodeID,
 		Attributes: map[string]string{
-			common.NodeReadyAttribute: strconv.FormatBool(ready),
+			common.NodeReadyAttribute:      strconv.FormatBool(ready),
+			common.NodeLastUpdateAttribute: strconv.FormatUint(nodeLastUpdatedSequence, 10),
 		},
 		SchedulableResource: capacity,
 		OccupiedResource:    occupied,

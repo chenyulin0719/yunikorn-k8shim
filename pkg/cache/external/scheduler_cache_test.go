@@ -1117,13 +1117,13 @@ func TestNodeResources(t *testing.T) {
 	cache.UpdateNode(node)
 
 	// test snapshot with missing node
-	capacity, occupied, ok := cache.SnapshotResources("missing")
+	capacity, occupied, _, ok := cache.SnapshotResources("missing")
 	assert.Assert(t, !ok, "got result for missing host")
 	assert.Assert(t, capacity == nil, "got capacity for missing host")
 	assert.Assert(t, occupied == nil, "got occupied for missing host")
 
 	// test snapshot with existing, unoccupied node
-	capacity, occupied, ok = cache.SnapshotResources(host1)
+	capacity, occupied, _, ok = cache.SnapshotResources(host1)
 	assert.Assert(t, ok, "no result for host1")
 	assert.Equal(t, int64(1024*1000*1000), capacity.Resources["memory"].Value, "wrong memory capacity for host1")
 	assert.Equal(t, int64(10*1000), capacity.Resources["vcore"].Value, "wrong vcore capacity for host1")
@@ -1133,27 +1133,27 @@ func TestNodeResources(t *testing.T) {
 	res2 := common.NewResourceBuilder().AddResource("memory", 512*1000*1000).AddResource("vcore", 5000).Build()
 
 	// update capacity with missing node
-	capacity, occupied, ok = cache.UpdateCapacity("missing", res1)
+	capacity, occupied, _, ok = cache.UpdateCapacity("missing", res1)
 	assert.Assert(t, !ok, "got result for missing host")
 	assert.Assert(t, capacity == nil, "got capacity for missing host")
 	assert.Assert(t, occupied == nil, "got occupied for missing host")
 
 	// update capacity with real node
-	capacity, occupied, ok = cache.UpdateCapacity(host1, res1)
+	capacity, occupied, _, ok = cache.UpdateCapacity(host1, res1)
 	assert.Assert(t, ok, "no result for host1")
 	assert.Equal(t, int64(2048*1000*1000), capacity.Resources["memory"].Value, "wrong memory capacity for host1")
 	assert.Equal(t, int64(20*1000), capacity.Resources["vcore"].Value, "wrong vcore capacity for host1")
 	assert.Equal(t, 0, len(occupied.Resources), "non-empty occupied resources")
 
 	// update occupied resources with missing node
-	node, capacity, occupied, ok = cache.UpdateOccupiedResource("missing", "default", "podName", res2, AddOccupiedResource)
+	node, capacity, occupied, _, ok = cache.UpdateOccupiedResource("missing", "default", "podName", res2, AddOccupiedResource)
 	assert.Assert(t, !ok, "got result for missing host")
 	assert.Assert(t, node == nil, "got node for missing host")
 	assert.Assert(t, capacity == nil, "got capacity for missing host")
 	assert.Assert(t, occupied == nil, "got occupied for missing host")
 
 	// update occupied resources with real node
-	node, capacity, occupied, ok = cache.UpdateOccupiedResource(host1, "default", "podName", res2, AddOccupiedResource)
+	node, capacity, occupied, _, ok = cache.UpdateOccupiedResource(host1, "default", "podName", res2, AddOccupiedResource)
 	assert.Assert(t, ok, "no result for host1")
 	assert.Equal(t, host1, node.Name, "wrong host name")
 	assert.Equal(t, int64(2048*1000*1000), capacity.Resources["memory"].Value, "wrong memory capacity for host1")
@@ -1162,7 +1162,7 @@ func TestNodeResources(t *testing.T) {
 	assert.Equal(t, int64(5*1000), occupied.Resources["vcore"].Value, "wrong vcore occupied for host1")
 
 	// retrieve snapshot again
-	capacity, occupied, ok = cache.SnapshotResources(host1)
+	capacity, occupied, _, ok = cache.SnapshotResources(host1)
 	assert.Assert(t, ok, "no result for host1")
 	assert.Equal(t, host1, node.Name, "wrong host name")
 	assert.Equal(t, int64(2048*1000*1000), capacity.Resources["memory"].Value, "wrong memory capacity for host1")
@@ -1171,7 +1171,7 @@ func TestNodeResources(t *testing.T) {
 	assert.Equal(t, int64(5*1000), occupied.Resources["vcore"].Value, "wrong vcore occupied for host1")
 
 	// subtract occupied resources with real node
-	node, capacity, occupied, ok = cache.UpdateOccupiedResource(host1, "default", "podName", res2, SubOccupiedResource)
+	node, capacity, occupied, _, ok = cache.UpdateOccupiedResource(host1, "default", "podName", res2, SubOccupiedResource)
 	assert.Assert(t, ok, "no result for host1")
 	assert.Equal(t, host1, node.Name, "wrong host name")
 	assert.Equal(t, int64(2048*1000*1000), capacity.Resources["memory"].Value, "wrong memory capacity for host1")
