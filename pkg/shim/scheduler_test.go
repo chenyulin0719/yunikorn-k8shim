@@ -21,6 +21,7 @@ package shim
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"gotest.tools/v3/assert"
 	v1 "k8s.io/api/core/v1"
@@ -37,6 +38,41 @@ import (
 	siCommon "github.com/apache/yunikorn-scheduler-interface/lib/go/common"
 	"github.com/apache/yunikorn-scheduler-interface/lib/go/si"
 )
+
+func TestUpdateNode(t *testing.T) {
+	// init and register scheduler
+	cluster := MockScheduler{}
+	cluster.init()
+	assert.NilError(t, cluster.start(), "failed to start cluster")
+	defer cluster.stop()
+
+	nodeID := "dummy_NodeID"
+	capacity := common.NewResourceBuilder().AddResource("memory", 200).AddResource("vcore", 2).Build()
+	occupied := common.NewResourceBuilder().AddResource("memory", 50).AddResource("vcore", 1).Build()
+	var existingAllocations []*si.Allocation
+	ready := true
+	nodeLabels := map[string]string{
+		"label1":                           "key1",
+		"label2":                           "key2",
+		"node.kubernetes.io/instance-type": "HighMem",
+	}
+	request := common.CreateUpdateRequestForNewNode(nodeID, nodeLabels, capacity, occupied, existingAllocations, ready)
+	cluster.apiProvider.GetAPIs().SchedulerAPI.UpdateNode(request)
+
+	loopSize := 1000
+	requests := make([]*si.NodeRequest, 0, loopSize)
+	for i := 0; i < loopSize; i++ {
+		request = common.CreateUpdateRequestForUpdatedNode(nodeID, capacity, occupied, ready)
+		requests = append(requests, request)
+	}
+
+	start_time := time.Now()
+	for i := 0; i < loopSize; i++ {
+		cluster.apiProvider.GetAPIs().SchedulerAPI.UpdateNode(requests[i])
+	}
+	end_time := time.Now()
+	t.Logf("### : %v times updateNode cost time: %v us", loopSize, end_time.Sub(start_time).Microseconds())
+}
 
 func TestApplicationScheduling(t *testing.T) {
 	configData := `
