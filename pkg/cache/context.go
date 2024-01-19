@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
@@ -56,15 +57,16 @@ const registerNodeContextHandler = "RegisterNodeContextHandler"
 
 // context maintains scheduling state, like apps and apps' tasks.
 type Context struct {
-	applications   map[string]*Application        // apps
-	schedulerCache *schedulercache.SchedulerCache // external cache
-	apiProvider    client.APIProvider             // apis to interact with api-server, scheduler-core, etc
-	predManager    predicates.PredicateManager    // K8s predicates
-	pluginMode     bool                           // true if we are configured as a scheduler plugin
-	namespace      string                         // yunikorn namespace
-	configMaps     []*v1.ConfigMap                // cached yunikorn configmaps
-	lock           *sync.RWMutex                  // lock
-	txnID          atomic.Uint64                  // transaction ID counter
+	applications             map[string]*Application        // apps
+	schedulerCache           *schedulercache.SchedulerCache // external cache
+	apiProvider              client.APIProvider             // apis to interact with api-server, scheduler-core, etc
+	predManager              predicates.PredicateManager    // K8s predicates
+	pluginMode               bool                           // true if we are configured as a scheduler plugin
+	namespace                string                         // yunikorn namespace
+	configMaps               []*v1.ConfigMap                // cached yunikorn configmaps
+	lock                     *sync.RWMutex                  // lock
+	txnID                    atomic.Uint64                  // transaction ID counter
+	nodeUpdateRequestCounter uint64                         // node update request counter
 }
 
 // NewContext create a new context for the scheduler using a default (empty) configuration
@@ -1370,6 +1372,8 @@ func (ctx *Context) GetSchedulerCache() *schedulercache.SchedulerCache {
 // InitializeState is used to initialize the state of the scheduler context using the Kubernetes informers.
 // This registers priority classes, nodes, and pods and ensures the scheduler core is synchronized.
 func (ctx *Context) InitializeState() error {
+	step_0_counter := ctx.nodeUpdateRequestCounter
+	step_0_start_time := time.Now()
 	// Step 1: Register priority classes. This is first so that we can rely on the information they
 	// provide to properly register tasks with correct priority and preemption metadata.
 	priorityClasses, err := ctx.registerPriorityClasses()
@@ -1377,7 +1381,8 @@ func (ctx *Context) InitializeState() error {
 		log.Log(log.ShimContext).Error("failed to register priority classes", zap.Error(err))
 		return err
 	}
-
+	step_1_counter := ctx.nodeUpdateRequestCounter
+	step_1_start_time := time.Now()
 	// Step 2: Register nodes. Nodes are registered with the scheduler core in an initially disabled state.
 	// This allows the existing allocations for each node to be processed before activating the node.
 	nodes, err := ctx.loadNodes()
@@ -1392,6 +1397,9 @@ func (ctx *Context) InitializeState() error {
 	}
 	ctx.addNodesWithoutRegistering(acceptedNodes)
 
+	step_2_counter := ctx.nodeUpdateRequestCounter
+	step_2_start_time := time.Now()
+
 	// Step 3: Register pods. Pods are handled in creation order to provide consistency with previous scheduler runs.
 	// If pods are associated with existing nodes, they are treated as allocations (rather than asks).
 	pods, err := ctx.registerPods()
@@ -1399,7 +1407,8 @@ func (ctx *Context) InitializeState() error {
 		log.Log(log.ShimContext).Error("failed to register pods", zap.Error(err))
 		return err
 	}
-
+	step_3_counter := ctx.nodeUpdateRequestCounter
+	step_3_start_time := time.Now()
 	// Step 4: Enable nodes. At this point all allocations and asks have been processed, so it is safe to allow the
 	// core to begin scheduling.
 	err = ctx.enableNodes(acceptedNodes)
@@ -1407,7 +1416,8 @@ func (ctx *Context) InitializeState() error {
 		log.Log(log.ShimContext).Error("failed to enable nodes", zap.Error(err))
 		return err
 	}
-
+	step_4_counter := ctx.nodeUpdateRequestCounter
+	step_4_start_time := time.Now()
 	// Step 5: Start scheduling event handlers. At this point, initialization is mostly complete, and any existing
 	// objects will show up as newly added objects. Since the add/update event handlers are idempotent, this is fine.
 	ctx.AddSchedulingEventHandlers()
@@ -1436,6 +1446,29 @@ func (ctx *Context) InitializeState() error {
 		log.Log(log.ShimContext).Error("failed to finalize pods", zap.Error(err))
 		return err
 	}
+	step_8_counter := ctx.nodeUpdateRequestCounter
+	step_8_start_time := time.Now()
+
+	time.Sleep(10 * time.Second)
+	counter_diff := step_1_counter - step_0_counter
+	time_diff := step_1_start_time.Sub(step_0_start_time)
+	log.Log(log.ShimScheduler).Info(fmt.Sprintf("### Step 1 took %v ms, nodeUpdateRequestCounter %v\n", time_diff.Microseconds(), counter_diff))
+
+	counter_diff = step_2_counter - step_1_counter
+	time_diff = step_2_start_time.Sub(step_1_start_time)
+	log.Log(log.ShimScheduler).Info(fmt.Sprintf("### Step 2 took %v ms, nodeUpdateRequestCounter %v\n", time_diff.Microseconds(), counter_diff))
+
+	counter_diff = step_3_counter - step_2_counter
+	time_diff = step_3_start_time.Sub(step_2_start_time)
+	log.Log(log.ShimScheduler).Info(fmt.Sprintf("### Step 3 took %v ms, nodeUpdateRequestCounter %v\n", time_diff.Microseconds(), counter_diff))
+
+	counter_diff = step_4_counter - step_3_counter
+	time_diff = step_4_start_time.Sub(step_3_start_time)
+	log.Log(log.ShimScheduler).Info(fmt.Sprintf("### Step 4 took %v ms, nodeUpdateRequestCounter %v\n", time_diff.Microseconds(), counter_diff))
+
+	counter_diff = step_8_counter - step_0_counter
+	time_diff = step_8_start_time.Sub(step_0_start_time)
+	log.Log(log.ShimScheduler).Info(fmt.Sprintf("### Total took %v ms, nodeUpdateRequestCounter %v\n", time_diff.Microseconds(), counter_diff))
 
 	return nil
 }
@@ -1565,6 +1598,8 @@ func (ctx *Context) registerNodes(nodes []*v1.Node) ([]*v1.Node, error) {
 		log.Log(log.ShimContext).Error("Failed to register nodes", zap.Error(err))
 		return nil, err
 	}
+	// ### increment the node update request counter
+	ctx.nodeUpdateRequestCounter++
 
 	// wait for all responses to accumulate
 	wg.Wait()
@@ -1585,11 +1620,15 @@ func (ctx *Context) registerNodes(nodes []*v1.Node) ([]*v1.Node, error) {
 
 func (ctx *Context) decommissionNode(node *v1.Node) error {
 	request := common.CreateUpdateRequestForDeleteOrRestoreNode(node.Name, si.NodeInfo_DECOMISSION)
+	// ### increment the node update request counter
+	ctx.nodeUpdateRequestCounter++
 	return ctx.apiProvider.GetAPIs().SchedulerAPI.UpdateNode(request)
 }
 
 func (ctx *Context) updateNodeResources(node *v1.Node, capacity *si.Resource, occupied *si.Resource, ready bool) error {
 	request := common.CreateUpdateRequestForUpdatedNode(node.Name, capacity, occupied, ready)
+	// ### increment the node update request counter
+	ctx.nodeUpdateRequestCounter++
 	return ctx.apiProvider.GetAPIs().SchedulerAPI.UpdateNode(request)
 }
 
@@ -1620,6 +1659,8 @@ func (ctx *Context) enableNodes(nodes []*v1.Node) error {
 		log.Log(log.ShimContext).Error("Failed to enable nodes", zap.Error(err))
 		return err
 	}
+	// ### increment the node update request counter
+	ctx.nodeUpdateRequestCounter++
 	return nil
 }
 
