@@ -163,7 +163,7 @@ require (
 
 replace (
 	// github.com/apache/yunikorn-core => /Users/chenyulin/code/yunikorn/yunikorn-core
-	github.com/apache/yunikorn-core => github.com/chenyulin0719/yunikorn-core v0.0.0-20240118063812-a9830ebfdca2
+	github.com/apache/yunikorn-core => github.com/chenyulin0719/yunikorn-core v0.0.0-20240119172256-6325d93a19ac
 	golang.org/x/crypto => golang.org/x/crypto v0.14.0
 	golang.org/x/lint => golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	golang.org/x/net => golang.org/x/net v0.17.0
