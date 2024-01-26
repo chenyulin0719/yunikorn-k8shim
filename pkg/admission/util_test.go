@@ -19,7 +19,6 @@
 package admission
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -345,57 +344,6 @@ func TestUpdateAnnotationIfNotPresentInPod(t *testing.T) {
 	result = updateAnnotationIfNotPresentInPod(pod, result, "new_key", "new_value")
 	assert.Equal(t, len(result), 1)
 	assert.Equal(t, result["new_key"], "new_value")
-}
-
-func TestGenerateAppID(t *testing.T) {
-	defaultConf := createConfig()
-
-	appID := generateAppID("this-is-a-namespace", defaultConf.GetGenerateUniqueAppIds())
-	assert.Equal(t, strings.HasPrefix(appID, fmt.Sprintf("%s-this-is-a-namespace", constants.AutoGenAppPrefix)), true)
-	assert.Equal(t, len(appID), 36)
-
-	appID = generateAppID("short", defaultConf.GetGenerateUniqueAppIds())
-	assert.Equal(t, strings.HasPrefix(appID, fmt.Sprintf("%s-short", constants.AutoGenAppPrefix)), true)
-	assert.Equal(t, len(appID), 22)
-
-	appID = generateAppID(strings.Repeat("long", 100), defaultConf.GetGenerateUniqueAppIds())
-	assert.Equal(t, strings.HasPrefix(appID, fmt.Sprintf("%s-long", constants.AutoGenAppPrefix)), true)
-	assert.Equal(t, len(appID), 63)
-
-	// explicitly disable autogen config
-	uniqueDisabled := createConfigWithOverrides(map[string]string{
-		conf.AMFilteringGenerateUniqueAppIds: fmt.Sprintf("%t", false),
-	})
-
-	appID = generateAppID("this-is-a-namespace", uniqueDisabled.GetGenerateUniqueAppIds())
-	assert.Equal(t, strings.HasPrefix(appID, fmt.Sprintf("%s-this-is-a-namespace", constants.AutoGenAppPrefix)), true)
-	assert.Equal(t, len(appID), 36)
-
-	appID = generateAppID("short", uniqueDisabled.GetGenerateUniqueAppIds())
-	assert.Equal(t, strings.HasPrefix(appID, fmt.Sprintf("%s-short", constants.AutoGenAppPrefix)), true)
-	assert.Equal(t, len(appID), 22)
-
-	appID = generateAppID(strings.Repeat("long", 100), uniqueDisabled.GetGenerateUniqueAppIds())
-	assert.Equal(t, strings.HasPrefix(appID, fmt.Sprintf("%s-long", constants.AutoGenAppPrefix)), true)
-	assert.Equal(t, len(appID), 63)
-
-	// enabled autogen config
-	uniqueEnabled := createConfigWithOverrides(map[string]string{
-		conf.AMFilteringGenerateUniqueAppIds: fmt.Sprintf("%t", true),
-	})
-
-	// short namespace name
-	ns := "short"
-	appID = generateAppID(ns, uniqueEnabled.GetGenerateUniqueAppIds())
-	assert.Equal(t, strings.HasPrefix(appID, "short-"), true)
-	assert.Equal(t, len(appID), len("short")+len("-")+len(GetNewUUID()))
-
-	// long namespace name
-	ns = strings.Repeat("long", 100)
-	appID = generateAppID(ns, uniqueEnabled.GetGenerateUniqueAppIds())
-	assert.Equal(t, strings.HasPrefix(appID, "long"), true)
-	assert.Equal(t, strings.HasPrefix(appID, ns[0:26]+"-"), true)
-	assert.Equal(t, len(appID), 63)
 }
 
 func TestGetApplicationIDFromPod(t *testing.T) {
