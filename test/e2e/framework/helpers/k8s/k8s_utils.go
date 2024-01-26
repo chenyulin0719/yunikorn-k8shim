@@ -165,6 +165,18 @@ func (k *KubeCtl) GetPodsByOptions(options metav1.ListOptions) (*v1.PodList, err
 	return k.clientSet.CoreV1().Pods("").List(context.TODO(), options)
 }
 
+func (k *KubeCtl) GetDeployments(namespace string) (*appsv1.DeploymentList, error) {
+	return k.clientSet.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{})
+}
+
+func (k *KubeCtl) GetDaemonSets(namespace string) (*appsv1.DaemonSetList, error) {
+	return k.clientSet.AppsV1().DaemonSets(namespace).List(context.TODO(), metav1.ListOptions{})
+}
+
+func (k *KubeCtl) GetStatefulSets(namespace string) (*appsv1.StatefulSetList, error) {
+	return k.clientSet.AppsV1().StatefulSets(namespace).List(context.TODO(), metav1.ListOptions{})
+}
+
 func (k *KubeCtl) GetJobs(namespace string) (*batchv1.JobList, error) {
 	return k.clientSet.BatchV1().Jobs(namespace).List(context.TODO(), metav1.ListOptions{})
 }
@@ -221,6 +233,54 @@ func (k *KubeCtl) GetPodNamesFromNS(namespace string) ([]string, error) {
 		return nil, err
 	}
 	for _, each := range Pods.Items {
+		s = append(s, each.Name)
+	}
+	return s, nil
+}
+
+func (k *KubeCtl) GetDeploymentNamesFromNS(namespace string) ([]string, error) {
+	var s []string
+	deployments, err := k.GetDeployments(namespace)
+	if err != nil {
+		return nil, err
+	}
+	for _, each := range deployments.Items {
+		s = append(s, each.Name)
+	}
+	return s, nil
+}
+
+func (k *KubeCtl) GetDaemonSetNamesFromNS(namespace string) ([]string, error) {
+	var s []string
+	daemonSets, err := k.GetDaemonSets(namespace)
+	if err != nil {
+		return nil, err
+	}
+	for _, each := range daemonSets.Items {
+		s = append(s, each.Name)
+	}
+	return s, nil
+}
+
+func (k *KubeCtl) GetReplicaSetNamesFromNS(namespace string) ([]string, error) {
+	var s []string
+	replicaSets, err := k.GetReplicaSets(namespace)
+	if err != nil {
+		return nil, err
+	}
+	for _, each := range replicaSets.Items {
+		s = append(s, each.Name)
+	}
+	return s, nil
+}
+
+func (k *KubeCtl) GetStatefulSetNamesFromNS(namespace string) ([]string, error) {
+	var s []string
+	statefulSets, err := k.GetStatefulSets(namespace)
+	if err != nil {
+		return nil, err
+	}
+	for _, each := range statefulSets.Items {
 		s = append(s, each.Name)
 	}
 	return s, nil
@@ -391,13 +451,154 @@ func (k *KubeCtl) DeleteNamespace(namespace string) error {
 }
 
 func (k *KubeCtl) TearDownNamespace(namespace string) error {
-	err := k.DeletePods(namespace)
+	var err error
+	err = k.DeleteDeployments(namespace)
+	if err != nil {
+		return err
+	}
+
+	err = k.DeleteDaemonSets(namespace)
+	if err != nil {
+		return err
+	}
+
+	err = k.DeleteReplicaSets(namespace)
+	if err != nil {
+		return err
+	}
+
+	err = k.DeleteStatefulSets(namespace)
+	if err != nil {
+		return err
+	}
+
+	err = k.DeleteJobs(namespace)
+	if err != nil {
+		return err
+	}
+
+	err = k.DeletePods(namespace)
+	if err != nil {
+		return err
+	}
+
+	err = k.DeletePVCs(namespace)
 	if err != nil {
 		return err
 	}
 
 	// Delete namespace
 	return k.clientSet.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
+}
+
+func (k *KubeCtl) DeleteDeployments(namespace string) error {
+	// Delete all Deployment in namespace
+	var deployments, err = k.GetDeploymentNamesFromNS(namespace)
+	if err != nil {
+		return err
+	}
+	for _, each := range deployments {
+		err = k.DeleteDeployment(each, namespace)
+		if err != nil {
+			if statusErr, ok := err.(*k8serrors.StatusError); ok {
+				if statusErr.ErrStatus.Reason == metav1.StatusReasonNotFound {
+					fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to delete Deployment %s - reason is %s, it "+
+						"has been deleted in the meantime\n", each, statusErr.ErrStatus.Reason)
+					continue
+				}
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (k *KubeCtl) DeleteDaemonSets(namespace string) error {
+	// Delete all DaemonSet in namespace
+	var daemonSets, err = k.GetDaemonSetNamesFromNS(namespace)
+	if err != nil {
+		return err
+	}
+	for _, each := range daemonSets {
+		err = k.DeleteDaemonSet(each, namespace)
+		if err != nil {
+			if statusErr, ok := err.(*k8serrors.StatusError); ok {
+				if statusErr.ErrStatus.Reason == metav1.StatusReasonNotFound {
+					fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to delete DaemonSet %s - reason is %s, it "+
+						"has been deleted in the meantime\n", each, statusErr.ErrStatus.Reason)
+					continue
+				}
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (k *KubeCtl) DeleteReplicaSets(namespace string) error {
+	// Delete all ReplicaSet in namespace
+	var replicaSets, err = k.GetReplicaSetNamesFromNS(namespace)
+	if err != nil {
+		return err
+	}
+	for _, each := range replicaSets {
+		err = k.DeleteReplicaSet(each, namespace)
+		if err != nil {
+			if statusErr, ok := err.(*k8serrors.StatusError); ok {
+				if statusErr.ErrStatus.Reason == metav1.StatusReasonNotFound {
+					fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to delete ReplicaSet %s - reason is %s, it "+
+						"has been deleted in the meantime\n", each, statusErr.ErrStatus.Reason)
+					continue
+				}
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (k *KubeCtl) DeleteStatefulSets(namespace string) error {
+	// Delete all StatefulSet in namespace
+	var statefulSets, err = k.GetStatefulSetNamesFromNS(namespace)
+	if err != nil {
+		return err
+	}
+	for _, each := range statefulSets {
+		err = k.DeleteStatefulSet(each, namespace)
+		if err != nil {
+			if statusErr, ok := err.(*k8serrors.StatusError); ok {
+				if statusErr.ErrStatus.Reason == metav1.StatusReasonNotFound {
+					fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to delete StatefulSet %s - reason is %s, it "+
+						"has been deleted in the meantime\n", each, statusErr.ErrStatus.Reason)
+					continue
+				}
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (k *KubeCtl) DeleteJobs(namespace string) error {
+	// Delete all jobs
+	var jobs, err = k.GetJobNamesFromNS(namespace)
+	if err != nil {
+		return err
+	}
+	for _, each := range jobs {
+		err = k.DeleteJob(each, namespace)
+		if err != nil {
+			if statusErr, ok := err.(*k8serrors.StatusError); ok {
+				if statusErr.ErrStatus.Reason == metav1.StatusReasonNotFound {
+					fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to delete job %s - reason is %s, it "+
+						"has been deleted in the meantime\n", each, statusErr.ErrStatus.Reason)
+					continue
+				}
+			}
+			return err
+		}
+	}
+	return nil
 }
 
 func (k *KubeCtl) DeletePods(namespace string) error {
@@ -430,14 +631,47 @@ func GetConfigMapObj(yamlPath string) (*v1.ConfigMap, error) {
 	return c.(*v1.ConfigMap), err
 }
 
-func LogNamespaceInfo(ns string) error {
-	fmt.Fprintf(ginkgo.GinkgoWriter, "Log namespace info from %s\n", ns)
+func (k *KubeCtl) LogNamespaceInfo(file *os.File, ns string) error {
+	fmt.Fprintf(file, "Log namespace info, ns: %s\n", ns)
 	cmd := fmt.Sprintf("kubectl cluster-info dump --namespaces=%s", ns)
 	out, runErr := common.RunShellCmdForeground(cmd)
 	if runErr != nil {
 		return runErr
 	}
-	ginkgo.By("Cluster dump output:\n" + out)
+	_, err := fmt.Fprintln(file, out)
+	return err
+}
+
+func (k *KubeCtl) LogPodsInfo(file *os.File) error {
+	fmt.Fprintln(file, "Log pods info:")
+	pods, err := k.GetPodsByOptions(metav1.ListOptions{})
+	if err != nil {
+		return err
+	} else {
+		fmt.Fprintf(file, "Pod count is %d\n", len(pods.Items))
+		for _, pod := range pods.Items {
+			fmt.Fprintf(file, "Pod name is %s\n", pod.Name)
+			fmt.Fprintf(file, "Pod details: %s\n", pod.String())
+		}
+	}
+	return nil
+}
+
+func (k *KubeCtl) LogNodesInfo(file *os.File) error {
+	fmt.Fprintln(file, "Log nodes info:")
+	nodes, err := k.GetNodes()
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(file, "Node count is %d\n", len(nodes.Items))
+	for _, node := range nodes.Items {
+		fmt.Fprintf(file, "Node: %s\n", node.Name)
+		nodeInfo, err := k.DescribeNode(node)
+		if err != nil {
+			fmt.Fprintf(file, "Failed to describe node: %s, err: %v\n", node.Name, err)
+		}
+		fmt.Fprintln(file, nodeInfo)
+	}
 	return nil
 }
 
@@ -1242,15 +1476,13 @@ func (k *KubeCtl) GetNodesAvailRes(nodes v1.NodeList) map[string]v1.ResourceList
 	return nodeAvailRes
 }
 
-// DescribeNode Describe Node
-func (k *KubeCtl) DescribeNode(node v1.Node) error {
+func (k *KubeCtl) DescribeNode(node v1.Node) (string, error) {
 	cmd := "kubectl describe node " + node.Name
 	out, runErr := common.RunShellCmdForeground(cmd)
 	if runErr != nil {
-		return runErr
+		return "", runErr
 	}
-	ginkgo.By("describe output for node is:\n" + out)
-	return nil
+	return out, nil
 }
 
 func (k *KubeCtl) SetNodeLabel(name, key, value string) error {

@@ -21,7 +21,6 @@ package stateawareappscheduling_test
 import (
 	"fmt"
 
-	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 
@@ -94,7 +93,7 @@ var _ = Describe("FallbackTest:", func() {
 		Ω(allocation.AllocationKey).NotTo(BeNil())
 		Ω(allocation.NodeID).NotTo(BeNil())
 		Ω(allocation.Partition).NotTo(BeNil())
-		Ω(allocation.UUID).NotTo(BeNil())
+		Ω(allocation.AllocationID).NotTo(BeNil())
 		Ω(allocation.ApplicationID).To(Equal(sleepRespPod.ObjectMeta.Labels["applicationId"]))
 		core := sleepRespPod.Spec.Containers[0].Resources.Requests.Cpu().MilliValue()
 		mem := sleepRespPod.Spec.Containers[0].Resources.Requests.Memory().Value()
@@ -105,16 +104,13 @@ var _ = Describe("FallbackTest:", func() {
 	})
 
 	AfterEach(func() {
+		tests.DumpClusterInfoIfSpecFailed(suiteName, []string{ns})
+
 		By("Check Yunikorn's health")
 		checks, err := yunikorn.GetFailedHealthChecks()
 		Ω(err).NotTo(HaveOccurred())
 		Ω(checks).To(Equal(""), checks)
 
-		testDescription := ginkgo.CurrentSpecReport()
-		if testDescription.Failed() {
-			tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns})
-			tests.LogYunikornContainer(testDescription.FailureMessage())
-		}
 		By("Tearing down namespace: " + ns)
 		err = kClient.TearDownNamespace(ns)
 		Ω(err).NotTo(HaveOccurred())

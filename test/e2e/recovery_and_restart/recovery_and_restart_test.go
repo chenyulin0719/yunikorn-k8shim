@@ -20,6 +20,7 @@ package recoveryandrestart_test
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	tests "github.com/apache/yunikorn-k8shim/test/e2e"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/configmanager"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/helpers/common"
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/helpers/k8s"
@@ -45,6 +47,7 @@ const (
 	taintKey             = "e2e_test"
 )
 
+var suiteName string
 var kClient k8s.KubeCtl
 var restClient yunikorn.RClient
 var oldConfigMap = new(v1.ConfigMap)
@@ -57,6 +60,8 @@ var sleepPodConfigs = k8s.SleepPodConfig{Name: "sleepjob", NS: dev}
 var sleepPod2Configs = k8s.SleepPodConfig{Name: "sleepjob2", NS: dev}
 
 var _ = ginkgo.BeforeSuite(func() {
+	_, filename, _, _ := runtime.Caller(0)
+	suiteName = common.GetSuiteName(filename)
 	// Initializing kubectl client
 	kClient = k8s.KubeCtl{}
 	Ω(kClient.SetClient()).To(gomega.BeNil())
@@ -79,7 +84,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gomega.Ω(err).NotTo(gomega.HaveOccurred())
 	// Wait for pod to move to running state
 	err = kClient.WaitForPodBySelectorRunning(dev,
-		fmt.Sprintf("app=%s", sleepRespPod.ObjectMeta.Labels["app"]),
+		fmt.Sprintf("applicationId=%s", sleepRespPod.ObjectMeta.Labels["applicationId"]),
 		60)
 	gomega.Ω(err).NotTo(gomega.HaveOccurred())
 
@@ -96,7 +101,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gomega.Ω(err).NotTo(gomega.HaveOccurred())
 	// Wait for pod to move to running state
 	err = kClient.WaitForPodBySelectorRunning(dev,
-		fmt.Sprintf("app=%s", sleepRespPod2.ObjectMeta.Labels["app"]),
+		fmt.Sprintf("applicationId=%s", sleepRespPod2.ObjectMeta.Labels["applicationId"]),
 		60)
 	gomega.Ω(err).NotTo(gomega.HaveOccurred())
 })
@@ -126,6 +131,8 @@ var _ = ginkgo.AfterSuite(func() {
 var _ = ginkgo.Describe("", func() {
 
 	ginkgo.It("Verify_Pod_Alloc_Props", func() {
+		err := restClient.WaitForAppStateTransition("default", "root."+dev, sleepRespPod.ObjectMeta.Labels["applicationId"], "Starting", 30)
+		gomega.Ω(err).NotTo(gomega.HaveOccurred())
 		appsInfo, err := restClient.GetAppInfo("default", "root."+dev, sleepRespPod.ObjectMeta.Labels["applicationId"])
 		gomega.Ω(err).NotTo(gomega.HaveOccurred())
 		gomega.Ω(appsInfo).NotTo(gomega.BeNil())
@@ -137,7 +144,7 @@ var _ = ginkgo.Describe("", func() {
 		gomega.Ω(allocations.AllocationKey).NotTo(gomega.BeNil())
 		gomega.Ω(allocations.NodeID).NotTo(gomega.BeNil())
 		gomega.Ω(allocations.Partition).NotTo(gomega.BeNil())
-		gomega.Ω(allocations.UUID).NotTo(gomega.BeNil())
+		gomega.Ω(allocations.AllocationID).NotTo(gomega.BeNil())
 		gomega.Ω(allocations.ApplicationID).To(gomega.Equal(sleepRespPod.ObjectMeta.Labels["applicationId"]))
 		core := sleepRespPod.Spec.Containers[0].Resources.Requests.Cpu().MilliValue()
 		mem := sleepRespPod.Spec.Containers[0].Resources.Requests.Memory().Value()
@@ -357,6 +364,10 @@ var _ = ginkgo.Describe("", func() {
 		ginkgo.By("Waiting for placeholder replacement & sleep pods to finish")
 		err = kClient.WaitForJobPodsSucceeded(dev, job.Name, 1, 60*time.Second)
 		Ω(err).NotTo(gomega.HaveOccurred())
+	})
+
+	ginkgo.AfterEach(func() {
+		tests.DumpClusterInfoIfSpecFailed(suiteName, []string{dev})
 	})
 })
 

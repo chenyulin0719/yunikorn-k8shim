@@ -20,6 +20,7 @@ package preemption_test
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -37,10 +38,11 @@ import (
 	"github.com/apache/yunikorn-k8shim/test/e2e/framework/helpers/yunikorn"
 )
 
+var suiteName string
 var kClient k8s.KubeCtl
 var restClient yunikorn.RClient
 var ns *v1.Namespace
-var dev = "dev" + common.RandSeq(5)
+var dev string
 var oldConfigMap = new(v1.ConfigMap)
 var annotation = "ann-" + common.RandSeq(10)
 
@@ -53,6 +55,8 @@ var taintKey = "e2e_test_preemption"
 var nodesToTaint []string
 
 var _ = ginkgo.BeforeSuite(func() {
+	_, filename, _, _ := runtime.Caller(0)
+	suiteName = common.GetSuiteName(filename)
 	// Initializing kubectl client
 	kClient = k8s.KubeCtl{}
 	Ω(kClient.SetClient()).To(gomega.BeNil())
@@ -65,11 +69,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	ginkgo.By("Port-forward the scheduler pod")
 	var err = kClient.PortForwardYkSchedulerPod()
 	Ω(err).NotTo(gomega.HaveOccurred())
-
-	ginkgo.By("create development namespace")
-	ns, err = kClient.CreateNamespace(dev, nil)
-	gomega.Ω(err).NotTo(gomega.HaveOccurred())
-	gomega.Ω(ns.Status.Phase).To(gomega.Equal(v1.NamespaceActive))
 
 	var nodes *v1.NodeList
 	nodes, err = kClient.GetNodes()
@@ -126,12 +125,18 @@ var _ = ginkgo.AfterSuite(func() {
 	checks, err := yunikorn.GetFailedHealthChecks()
 	Ω(err).NotTo(gomega.HaveOccurred())
 	Ω(checks).To(gomega.Equal(""), checks)
-	ginkgo.By("Tearing down namespace: " + ns.Name)
-	err = kClient.TearDownNamespace(ns.Name)
-	Ω(err).NotTo(gomega.HaveOccurred())
 })
 
 var _ = ginkgo.Describe("Preemption", func() {
+	ginkgo.BeforeEach(func() {
+		dev = "dev-" + common.RandSeq(5)
+		ginkgo.By("Creating development namespace: " + dev)
+		var err error
+		ns, err = kClient.CreateNamespace(dev, nil)
+		Ω(err).NotTo(HaveOccurred())
+		Ω(ns.Status.Phase).To(gomega.Equal(v1.NamespaceActive))
+	})
+
 	ginkgo.It("Verify_basic_preemption", func() {
 		ginkgo.By("A queue uses resource more than the guaranteed value even after removing one of the pods. The cluster doesn't have enough resource to deploy a pod in another queue which uses resource less than the guaranteed value.")
 		// update config
@@ -547,17 +552,11 @@ var _ = ginkgo.Describe("Preemption", func() {
 	})
 
 	ginkgo.AfterEach(func() {
-		testDescription := ginkgo.CurrentSpecReport()
-		if testDescription.Failed() {
-			tests.LogTestClusterInfoWrapper(testDescription.FailureMessage(), []string{ns.Name})
-			tests.LogYunikornContainer(testDescription.FailureMessage())
-		}
-		// Delete all sleep pods
-		ginkgo.By("Delete all sleep pods")
-		err := kClient.DeletePods(ns.Name)
-		if err != nil {
-			fmt.Fprintf(ginkgo.GinkgoWriter, "Failed to delete pods in namespace %s - reason is %s\n", ns.Name, err.Error())
-		}
+		tests.DumpClusterInfoIfSpecFailed(suiteName, []string{dev})
+
+		ginkgo.By("Tear down namespace: " + dev)
+		err := kClient.TearDownNamespace(dev)
+		Ω(err).NotTo(HaveOccurred())
 
 		// reset config
 		ginkgo.By("Restoring YuniKorn configuration")

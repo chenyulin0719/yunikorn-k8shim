@@ -16,7 +16,7 @@
  limitations under the License.
 */
 
-package general
+package cache
 
 import (
 	"testing"
@@ -30,6 +30,18 @@ import (
 	"github.com/apache/yunikorn-k8shim/pkg/common/utils"
 	"github.com/apache/yunikorn-k8shim/pkg/conf"
 )
+
+const taskGroupInfo = `
+[
+	{
+		"name": "test-group-1",
+		"minMember": 3,
+		"minResource": {
+			"cpu": 2,
+			"memory": "1Gi"
+		}
+	}
+]`
 
 func TestGetTaskMetadata(t *testing.T) {
 	pod := v1.Pod{
@@ -121,7 +133,7 @@ func TestGetAppMetadata(t *testing.T) { //nolint:funlen
 		},
 	}
 
-	app, ok := getAppMetadata(&pod, false)
+	app, ok := getAppMetadata(&pod)
 	assert.Equal(t, ok, true)
 	assert.Equal(t, app.ApplicationID, "app00001")
 	assert.Equal(t, app.QueueName, "root.a")
@@ -163,7 +175,7 @@ func TestGetAppMetadata(t *testing.T) { //nolint:funlen
 		},
 	}
 
-	app, ok = getAppMetadata(&pod, false)
+	app, ok = getAppMetadata(&pod)
 	assert.Equal(t, ok, true)
 	assert.Equal(t, app.ApplicationID, "app00002")
 	assert.Equal(t, app.QueueName, "root.b")
@@ -196,7 +208,7 @@ func TestGetAppMetadata(t *testing.T) { //nolint:funlen
 		},
 	}
 
-	app, ok = getAppMetadata(&pod, false)
+	app, ok = getAppMetadata(&pod)
 	assert.Equal(t, ok, true)
 	assert.Equal(t, app.SchedulingPolicyParameters.GetGangSchedulingStyle(), "Soft")
 
@@ -226,7 +238,7 @@ func TestGetAppMetadata(t *testing.T) { //nolint:funlen
 		},
 	}
 
-	app, ok = getAppMetadata(&pod, false)
+	app, ok = getAppMetadata(&pod)
 	assert.Equal(t, ok, true)
 	assert.Equal(t, app.SchedulingPolicyParameters.GetGangSchedulingStyle(), "Soft")
 
@@ -249,18 +261,92 @@ func TestGetAppMetadata(t *testing.T) { //nolint:funlen
 	}
 
 	utils.SetPluginMode(false)
-	app, ok = getAppMetadata(&pod, false)
+	app, ok = getAppMetadata(&pod)
 	conf.GetSchedulerConf().GenerateUniqueAppIds = true
 	assert.Equal(t, ok, true)
 	assert.Equal(t, app.ApplicationID, "yunikorn-app-namespace-01-autogen")
 
 	utils.SetPluginMode(false)
 	conf.GetSchedulerConf().GenerateUniqueAppIds = true
-	app, ok = getAppMetadata(&pod, false)
+	app, ok = getAppMetadata(&pod)
 	assert.Equal(t, ok, true)
 	assert.Equal(t, app.ApplicationID, "app-namespace-01-UID-POD-00001")
 
 	utils.SetPluginMode(true)
-	app, ok = getAppMetadata(&pod, false)
+	app, ok = getAppMetadata(&pod)
 	assert.Equal(t, ok, false)
+}
+
+func TestGetOwnerReferences(t *testing.T) {
+	ownerRef := apis.OwnerReference{
+		APIVersion: apis.SchemeGroupVersion.String(),
+		Name:       "owner ref",
+	}
+	podWithOwnerRef := &v1.Pod{
+		ObjectMeta: apis.ObjectMeta{
+			OwnerReferences: []apis.OwnerReference{ownerRef},
+		},
+	}
+	podWithNoOwnerRef := &v1.Pod{
+		ObjectMeta: apis.ObjectMeta{
+			Name: "pod",
+			UID:  "uid",
+		},
+	}
+
+	returnedOwnerRefs := getOwnerReference(podWithOwnerRef)
+	assert.Assert(t, len(returnedOwnerRefs) == 1, "Only one owner reference is expected")
+	assert.Equal(t, returnedOwnerRefs[0].Name, podWithOwnerRef.Name, "Unexpected owner reference name")
+	assert.Equal(t, returnedOwnerRefs[0].UID, podWithOwnerRef.UID, "Unexpected owner reference UID")
+	assert.Equal(t, returnedOwnerRefs[0].Kind, "Pod", "Unexpected owner reference Kind")
+	assert.Equal(t, returnedOwnerRefs[0].APIVersion, v1.SchemeGroupVersion.String(), "Unexpected owner reference Kind")
+
+	returnedOwnerRefs = getOwnerReference(podWithNoOwnerRef)
+	assert.Assert(t, len(returnedOwnerRefs) == 1, "Only one owner reference is expected")
+	assert.Equal(t, returnedOwnerRefs[0].Name, podWithNoOwnerRef.Name, "Unexpected owner reference name")
+	assert.Equal(t, returnedOwnerRefs[0].UID, podWithNoOwnerRef.UID, "Unexpected owner reference UID")
+	assert.Equal(t, returnedOwnerRefs[0].Kind, "Pod", "Unexpected owner reference Kind")
+	assert.Equal(t, returnedOwnerRefs[0].APIVersion, v1.SchemeGroupVersion.String(), "Unexpected owner reference Kind")
+}
+
+func TestIsStateAwareDisabled(t *testing.T) {
+	// test empty pod
+	pod1 := &v1.Pod{}
+	assert.Equal(t, isStateAwareDisabled(pod1), false)
+
+	// test annotations take precedence over labels
+	pod2 := &v1.Pod{
+		ObjectMeta: apis.ObjectMeta{
+			Labels: map[string]string{
+				constants.LabelDisableStateAware: "false",
+			},
+			Annotations: map[string]string{
+				constants.AnnotationDisableStateAware: "true",
+			},
+		},
+	}
+	assert.Equal(t, isStateAwareDisabled(pod2), true)
+
+	// test pod with label only
+	pod3 := &v1.Pod{
+		ObjectMeta: apis.ObjectMeta{
+			Labels: map[string]string{
+				constants.LabelDisableStateAware: "true",
+			},
+		},
+	}
+	assert.Equal(t, isStateAwareDisabled(pod3), true)
+
+	// test pod with annotation unable to be parsed
+	pod4 := &v1.Pod{
+		ObjectMeta: apis.ObjectMeta{
+			Labels: map[string]string{
+				constants.LabelDisableStateAware: "true",
+			},
+			Annotations: map[string]string{
+				constants.AnnotationDisableStateAware: "a string that cannot be converted to a boolean",
+			},
+		},
+	}
+	assert.Equal(t, isStateAwareDisabled(pod4), false)
 }
