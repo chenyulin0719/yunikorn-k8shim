@@ -55,7 +55,6 @@ func getNewApplicationInfo(pod *v1.Pod, namespace string, generateUniqueAppIds b
 		// else
 		// 		application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
 		appID = utils.GenerateApplicationID(namespace, generateUniqueAppIds, string(pod.UID))
-		result[constants.AnnotationApplicationID] = appID
 
 		// if we generate an app ID, disable state-aware scheduling for this app
 		// skip it if disableStateAware has already been set in the pod
