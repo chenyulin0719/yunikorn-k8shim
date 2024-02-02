@@ -823,6 +823,7 @@ func TestGetQueueNameFromPod(t *testing.T) {
 		name          string
 		pod           *v1.Pod
 		expectedQueue string
+		isFromLabel   bool
 	}{
 		{
 			name: "With queue label",
@@ -832,6 +833,7 @@ func TestGetQueueNameFromPod(t *testing.T) {
 				},
 			},
 			expectedQueue: queueInLabel,
+			isFromLabel:   true,
 		},
 		{
 			name: "With queue annotation",
@@ -841,6 +843,7 @@ func TestGetQueueNameFromPod(t *testing.T) {
 				},
 			},
 			expectedQueue: queueInAnnotation,
+			isFromLabel:   false,
 		},
 		{
 			name: "With queue label and annotation",
@@ -850,7 +853,8 @@ func TestGetQueueNameFromPod(t *testing.T) {
 					Annotations: map[string]string{constants.AnnotationQueueName: queueInAnnotation},
 				},
 			},
-			expectedQueue: queueInLabel,
+			expectedQueue: queueInAnnotation,
+			isFromLabel:   false,
 		},
 		{
 			name: "Without queue label and annotation",
@@ -858,13 +862,15 @@ func TestGetQueueNameFromPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{},
 			},
 			expectedQueue: constants.ApplicationDefaultQueue,
+			isFromLabel:   false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			queue := GetQueueNameFromPod(tc.pod)
+			queue, isFromLabel := GetQueueNameFromPod(tc.pod, constants.ApplicationDefaultQueue)
 			assert.Equal(t, queue, tc.expectedQueue)
+			assert.Equal(t, isFromLabel, tc.isFromLabel)
 		})
 	}
 }
