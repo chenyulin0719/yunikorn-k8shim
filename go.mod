@@ -160,7 +160,7 @@ require (
 )
 
 replace (
-	github.com/apache/yunikorn-core => github.com/chenyulin0719/yunikorn-core v0.0.0-20240220015241-bbb822de85c2
+	github.com/apache/yunikorn-core => github.com/chenyulin0719/yunikorn-core v0.0.0-20240221080335-7bf5a93294b9
 	golang.org/x/lint => golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
 	k8s.io/api => k8s.io/api v0.29.2
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.29.2
