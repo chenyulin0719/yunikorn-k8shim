@@ -37,8 +37,9 @@ func updatePodLabel(pod *v1.Pod, namespace string, generateUniqueAppIds bool, de
 	}
 
 	sparkAppID := utils.GetPodLabelValue(pod, constants.SparkLabelAppID)
+	canonicalAppID := utils.GetPodLabelValue(pod, constants.CanonicalLabelApplicationID)
 	appID := utils.GetPodLabelValue(pod, constants.LabelApplicationID)
-	if sparkAppID == "" && appID == "" {
+	if canonicalAppID == "" && sparkAppID == "" && appID == "" {
 		// if app id not exist, generate one
 		// for each namespace, we group unnamed pods to one single app - if GenerateUniqueAppId is not set
 		// if GenerateUniqueAppId:
@@ -46,17 +47,30 @@ func updatePodLabel(pod *v1.Pod, namespace string, generateUniqueAppIds bool, de
 		// else
 		// 		application ID convention: ${AUTO_GEN_PREFIX}-${NAMESPACE}-${AUTO_GEN_SUFFIX}
 		generatedID := utils.GenerateApplicationID(namespace, generateUniqueAppIds, string(pod.UID))
+
+		result[constants.CanonicalLabelApplicationID] = generatedID
+		// Deprecated: After 1.7.0, admission controller will only add canonical label if application ID was not set
 		result[constants.LabelApplicationID] = generatedID
+	} else if canonicalAppID != "" {
+		// Deprecated: Added in 1.6.0 for backward compatibility, in case the prior shim version can't handle canonical label
+		result[constants.LabelApplicationID] = canonicalAppID
 	}
 
 	// if existing label exist, it takes priority over everything else
-	if _, ok := existingLabels[constants.LabelQueueName]; !ok {
+	canonicalQueueName := utils.GetPodLabelValue(pod, constants.CanonicalLabelQueueName)
+	queueName := utils.GetPodLabelValue(pod, constants.LabelQueueName)
+	if canonicalQueueName == "" && queueName == "" {
 		// if defaultQueueName is "", skip adding default queue name to the pod labels
 		if defaultQueueName != "" {
 			// for undefined configuration, am_conf will add 'root.default' to retain existing behavior
 			// if a custom name is configured for default queue, it will be used instead of root.default
+			result[constants.CanonicalLabelQueueName] = defaultQueueName
+			// Deprecated: After 1.7.0, admission controller will only add canonical label if queue was not set
 			result[constants.LabelQueueName] = defaultQueueName
 		}
+	} else if canonicalQueueName != "" {
+		// Deprecated: Added in 1.6.0 for backward compatibility, in case the prior shim version can't handle canonical label
+		result[constants.LabelQueueName] = canonicalQueueName
 	}
 
 	return result

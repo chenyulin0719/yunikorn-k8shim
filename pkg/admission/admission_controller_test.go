@@ -81,10 +81,12 @@ func TestUpdateLabels(t *testing.T) {
 	assert.Equal(t, patch[0].Op, "add")
 	assert.Equal(t, patch[0].Path, "/metadata/labels")
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 3)
+		assert.Equal(t, len(updatedMap), 5)
 		assert.Equal(t, updatedMap["random"], "random")
-		assert.Equal(t, updatedMap["queue"], "root.default")
-		assert.Equal(t, strings.HasPrefix(updatedMap["applicationId"], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, updatedMap[constants.CanonicalLabelQueueName], "root.default")
+		assert.Equal(t, updatedMap[constants.LabelQueueName], "root.default")
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {
 		t.Fatal("patch info content is not as expected")
 	}
@@ -104,8 +106,8 @@ func TestUpdateLabels(t *testing.T) {
 			UID:             "7f5fd6c5d5",
 			ResourceVersion: "10654",
 			Labels: map[string]string{
-				"random":        "random",
-				"applicationId": "app-0001",
+				"random":                              "random",
+				constants.CanonicalLabelApplicationID: "app-0001",
 			},
 		},
 		Spec:   v1.PodSpec{},
@@ -117,10 +119,12 @@ func TestUpdateLabels(t *testing.T) {
 	assert.Equal(t, patch[0].Op, "add")
 	assert.Equal(t, patch[0].Path, "/metadata/labels")
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 3)
+		assert.Equal(t, len(updatedMap), 5)
 		assert.Equal(t, updatedMap["random"], "random")
-		assert.Equal(t, updatedMap["queue"], "root.default")
-		assert.Equal(t, updatedMap["applicationId"], "app-0001")
+		assert.Equal(t, updatedMap[constants.CanonicalLabelQueueName], "root.default")
+		assert.Equal(t, updatedMap[constants.LabelQueueName], "root.default")
+		assert.Equal(t, updatedMap[constants.CanonicalLabelApplicationID], "app-0001")
+		assert.Equal(t, updatedMap[constants.LabelApplicationID], "app-0001")
 	} else {
 		t.Fatal("patch info content is not as expected")
 	}
@@ -140,8 +144,8 @@ func TestUpdateLabels(t *testing.T) {
 			UID:             "7f5fd6c5d5",
 			ResourceVersion: "10654",
 			Labels: map[string]string{
-				"random": "random",
-				"queue":  "root.abc",
+				"random":                          "random",
+				constants.CanonicalLabelQueueName: "root.abc",
 			},
 		},
 		Spec:   v1.PodSpec{},
@@ -154,10 +158,12 @@ func TestUpdateLabels(t *testing.T) {
 	assert.Equal(t, patch[0].Op, "add")
 	assert.Equal(t, patch[0].Path, "/metadata/labels")
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 3)
+		assert.Equal(t, len(updatedMap), 5)
 		assert.Equal(t, updatedMap["random"], "random")
-		assert.Equal(t, updatedMap["queue"], "root.abc")
-		assert.Equal(t, strings.HasPrefix(updatedMap["applicationId"], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, updatedMap[constants.CanonicalLabelQueueName], "root.abc")
+		assert.Equal(t, updatedMap[constants.LabelQueueName], "root.abc")
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {
 		t.Fatal("patch info content is not as expected")
 	}
@@ -186,9 +192,11 @@ func TestUpdateLabels(t *testing.T) {
 	assert.Equal(t, patch[0].Op, "add")
 	assert.Equal(t, patch[0].Path, "/metadata/labels")
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 2)
-		assert.Equal(t, updatedMap["queue"], "root.default")
-		assert.Equal(t, strings.HasPrefix(updatedMap["applicationId"], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, len(updatedMap), 4)
+		assert.Equal(t, updatedMap[constants.CanonicalLabelQueueName], "root.default")
+		assert.Equal(t, updatedMap[constants.LabelQueueName], "root.default")
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {
 		t.Fatal("patch info content is not as expected")
 	}
@@ -214,9 +222,11 @@ func TestUpdateLabels(t *testing.T) {
 	assert.Equal(t, patch[0].Op, "add")
 	assert.Equal(t, patch[0].Path, "/metadata/labels")
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 2)
-		assert.Equal(t, updatedMap["queue"], "root.default")
-		assert.Equal(t, strings.HasPrefix(updatedMap["applicationId"], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, len(updatedMap), 4)
+		assert.Equal(t, updatedMap[constants.CanonicalLabelQueueName], "root.default")
+		assert.Equal(t, updatedMap[constants.LabelQueueName], "root.default")
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {
 		t.Fatal("patch info content is not as expected")
 	}
@@ -240,9 +250,11 @@ func TestUpdateLabels(t *testing.T) {
 	assert.Equal(t, patch[0].Op, "add")
 	assert.Equal(t, patch[0].Path, "/metadata/labels")
 	if updatedMap, ok := patch[0].Value.(map[string]string); ok {
-		assert.Equal(t, len(updatedMap), 2)
-		assert.Equal(t, updatedMap["queue"], "root.default")
-		assert.Equal(t, strings.HasPrefix(updatedMap["applicationId"], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, len(updatedMap), 4)
+		assert.Equal(t, updatedMap[constants.CanonicalLabelQueueName], "root.default")
+		assert.Equal(t, updatedMap[constants.LabelQueueName], "root.default")
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, strings.HasPrefix(updatedMap[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {
 		t.Fatal("patch info content is not as expected")
 	}
