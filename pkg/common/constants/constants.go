@@ -36,13 +36,13 @@ const DomainYuniKornInternal = siCommon.DomainYuniKornInternal
 
 // Application
 const LabelApp = "app"
-const CanonicalLabelApplicationID = DomainYuniKorn + "app-id"
 const LabelApplicationID = "applicationId"
 const AnnotationApplicationID = DomainYuniKorn + "app-id"
-const CanonicalLabelQueueName = DomainYuniKorn + "queue"
+const CanonicalLabelApplicationID = DomainYuniKorn + "app-id"
 const LabelQueueName = "queue"
 const RootQueue = "root"
 const AnnotationQueueName = DomainYuniKorn + "queue"
+const CanonicalLabelQueueName = DomainYuniKorn + "queue"
 const AnnotationParentQueue = DomainYuniKorn + "parentqueue"
 const ApplicationDefaultQueue = "root.default"
 const DefaultPartition = "default"
