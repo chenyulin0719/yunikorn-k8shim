@@ -30,16 +30,16 @@ import (
 )
 
 func updatePodLabel(pod *v1.Pod, namespace string, generateUniqueAppIds bool, defaultQueueName string) map[string]string {
-	existingLabels := pod.Labels
 	result := make(map[string]string)
-	for k, v := range existingLabels {
+	for k, v := range pod.Labels {
 		result[k] = v
 	}
 
-	sparkAppID := utils.GetPodLabelValue(pod, constants.SparkLabelAppID)
 	canonicalAppID := utils.GetPodLabelValue(pod, constants.CanonicalLabelApplicationID)
-	appID := utils.GetPodLabelValue(pod, constants.LabelApplicationID)
-	if canonicalAppID == "" && sparkAppID == "" && appID == "" {
+	labelAppID := utils.GetPodLabelValue(pod, constants.LabelApplicationID)
+	sparkAppID := utils.GetPodLabelValue(pod, constants.SparkLabelAppID)
+	annotationAppID := utils.GetPodAnnotationValue(pod, constants.AnnotationApplicationID)
+	if canonicalAppID == "" && sparkAppID == "" && labelAppID == "" && annotationAppID == "" {
 		// if app id not exist, generate one
 		// for each namespace, we group unnamed pods to one single app - if GenerateUniqueAppId is not set
 		// if GenerateUniqueAppId:
@@ -56,10 +56,11 @@ func updatePodLabel(pod *v1.Pod, namespace string, generateUniqueAppIds bool, de
 		result[constants.LabelApplicationID] = canonicalAppID
 	}
 
-	// if existing label exist, it takes priority over everything else
 	canonicalQueueName := utils.GetPodLabelValue(pod, constants.CanonicalLabelQueueName)
-	queueName := utils.GetPodLabelValue(pod, constants.LabelQueueName)
-	if canonicalQueueName == "" && queueName == "" {
+	labelQueueName := utils.GetPodLabelValue(pod, constants.LabelQueueName)
+	annotationQueueName := utils.GetPodAnnotationValue(pod, constants.AnnotationQueueName)
+	if canonicalQueueName == "" && labelQueueName == "" && annotationQueueName == "" {
+		// if queueName not exist, generate one
 		// if defaultQueueName is "", skip adding default queue name to the pod labels
 		if defaultQueueName != "" {
 			// for undefined configuration, am_conf will add 'root.default' to retain existing behavior
@@ -77,9 +78,8 @@ func updatePodLabel(pod *v1.Pod, namespace string, generateUniqueAppIds bool, de
 }
 
 func updatePodAnnotation(pod *v1.Pod, key string, value string) map[string]string {
-	existingAnnotations := pod.Annotations
 	result := make(map[string]string)
-	for k, v := range existingAnnotations {
+	for k, v := range pod.Annotations {
 		result[k] = v
 	}
 	result[key] = value

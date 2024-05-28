@@ -62,14 +62,16 @@ func createTestingPodWithMeta() *v1.Pod {
 			Labels: map[string]string{
 				"random": "random",
 			},
+			Annotations: map[string]string{},
 		}
 
 	return pod
 }
 
-func createTestingPodWithAppId() *v1.Pod {
+func createTestingPodWithLabels(appId string, queue string) *v1.Pod {
 	pod := createTestingPodWithMeta()
-	pod.ObjectMeta.Labels[constants.CanonicalLabelApplicationID] = "app-0001"
+	pod.ObjectMeta.Labels[constants.CanonicalLabelApplicationID] = appId
+	pod.ObjectMeta.Labels[constants.CanonicalLabelQueueName] = queue
 
 	return pod
 }
@@ -81,9 +83,10 @@ func createTestingPodWithGenerateName() *v1.Pod {
 	return pod
 }
 
-func createTestingPodWithQueue() *v1.Pod {
+func createTestingPodWithAnnotations(appId string, queue string) *v1.Pod {
 	pod := createTestingPodWithMeta()
-	pod.ObjectMeta.Labels[constants.CanonicalLabelQueueName] = "root.abc"
+	pod.ObjectMeta.Annotations[constants.AnnotationApplicationID] = appId
+	pod.ObjectMeta.Annotations[constants.AnnotationQueueName] = queue
 
 	return pod
 }
@@ -100,57 +103,57 @@ func createTestingPodNoNamespaceAndLabels() *v1.Pod {
 }
 
 func TestUpdatePodLabelForAdmissionController(t *testing.T) {
+	dummyAppId := "app-0001"
+	dummyQueueName := "root.abc"
+	defaultQueueName := "root.default"
+
 	// verify when appId/queue are not given,
+	// we generate new appId/queue labels
 	pod := createTestingPodWithMeta()
-
-	if result := updatePodLabel(pod, "default", false, "root.default"); result != nil {
+	if result := updatePodLabel(pod, "default", false, defaultQueueName); result != nil {
 		assert.Equal(t, len(result), 5)
 		assert.Equal(t, result["random"], "random")
-		assert.Equal(t, result[constants.CanonicalLabelQueueName], "root.default")
-		assert.Equal(t, result[constants.LabelQueueName], "root.default")
 		assert.Equal(t, strings.HasPrefix(result[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
 		assert.Equal(t, strings.HasPrefix(result[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
+		assert.Equal(t, result[constants.CanonicalLabelQueueName], defaultQueueName)
+		assert.Equal(t, result[constants.LabelQueueName], defaultQueueName)
 	} else {
 		t.Fatal("UpdatePodLabelForAdmissionController is not as expected")
 	}
 
-	// verify if applicationId is given in the canonical labels,
+	// verify if appId/queue is given in the canonical labels
 	// we won't modify the value and will add it to non-canonical label for backward compatibility
-	pod = createTestingPodWithAppId()
-
-	if result := updatePodLabel(pod, "default", false, "root.default"); result != nil {
+	pod = createTestingPodWithLabels(dummyAppId, dummyQueueName)
+	if result := updatePodLabel(pod, "default", false, defaultQueueName); result != nil {
 		assert.Equal(t, len(result), 5)
 		assert.Equal(t, result["random"], "random")
-		assert.Equal(t, result[constants.CanonicalLabelQueueName], "root.default")
-		assert.Equal(t, result[constants.LabelQueueName], "root.default")
-		assert.Equal(t, result[constants.CanonicalLabelApplicationID], "app-0001")
-		assert.Equal(t, result[constants.LabelApplicationID], "app-0001")
+		assert.Equal(t, result[constants.CanonicalLabelApplicationID], dummyAppId)
+		assert.Equal(t, result[constants.LabelApplicationID], dummyAppId)
+		assert.Equal(t, result[constants.CanonicalLabelQueueName], dummyQueueName)
+		assert.Equal(t, result[constants.LabelQueueName], dummyQueueName)
 	} else {
 		t.Fatal("UpdatePodLabelForAdmissionController is not as expected")
 	}
 
-	// verify if queue is given in the labels,
-	// we won't modify the value and will add it to non-canonical label for backward compatibility
-	pod = createTestingPodWithQueue()
-	if result := updatePodLabel(pod, "default", false, "root.default"); result != nil {
-		assert.Equal(t, len(result), 5)
+	// verify if applicationId and queue is given in the annotations,
+	// we won't generate new labels
+	pod = createTestingPodWithAnnotations(dummyAppId, dummyQueueName)
+	if result := updatePodLabel(pod, "default", false, defaultQueueName); result != nil {
+		t.Log(result)
+		assert.Equal(t, len(result), 1)
 		assert.Equal(t, result["random"], "random")
-		assert.Equal(t, result[constants.CanonicalLabelQueueName], "root.abc")
-		assert.Equal(t, result[constants.LabelQueueName], "root.abc")
-		assert.Equal(t, strings.HasPrefix(result[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
-		assert.Equal(t, strings.HasPrefix(result[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {
-		t.Fatal("UpdatePodLabelForAdmissionControllert is not as expected")
+		t.Fatal("UpdatePodLabelForAdmissionController is not as expected")
 	}
 
 	// namespace might be empty
 	// labels might be empty
 	pod = createTestingPodNoNamespaceAndLabels()
 
-	if result := updatePodLabel(pod, "default", false, "root.default"); result != nil {
+	if result := updatePodLabel(pod, "default", false, defaultQueueName); result != nil {
 		assert.Equal(t, len(result), 4)
-		assert.Equal(t, result[constants.CanonicalLabelQueueName], "root.default")
-		assert.Equal(t, result[constants.LabelQueueName], "root.default")
+		assert.Equal(t, result[constants.CanonicalLabelQueueName], defaultQueueName)
+		assert.Equal(t, result[constants.LabelQueueName], defaultQueueName)
 		assert.Equal(t, strings.HasPrefix(result[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
 		assert.Equal(t, strings.HasPrefix(result[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {
@@ -159,10 +162,10 @@ func TestUpdatePodLabelForAdmissionController(t *testing.T) {
 
 	// pod name might be empty, it can comes from generatedName
 	pod = createTestingPodWithGenerateName()
-	if result := updatePodLabel(pod, "default", false, "root.default"); result != nil {
+	if result := updatePodLabel(pod, "default", false, defaultQueueName); result != nil {
 		assert.Equal(t, len(result), 4)
-		assert.Equal(t, result[constants.CanonicalLabelQueueName], "root.default")
-		assert.Equal(t, result[constants.LabelQueueName], "root.default")
+		assert.Equal(t, result[constants.CanonicalLabelQueueName], defaultQueueName)
+		assert.Equal(t, result[constants.LabelQueueName], defaultQueueName)
 		assert.Equal(t, strings.HasPrefix(result[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
 		assert.Equal(t, strings.HasPrefix(result[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {
@@ -170,10 +173,10 @@ func TestUpdatePodLabelForAdmissionController(t *testing.T) {
 	}
 
 	pod = createMinimalTestingPod()
-	if result := updatePodLabel(pod, "default", false, "root.default"); result != nil {
+	if result := updatePodLabel(pod, "default", false, defaultQueueName); result != nil {
 		assert.Equal(t, len(result), 4)
-		assert.Equal(t, result[constants.CanonicalLabelQueueName], "root.default")
-		assert.Equal(t, result[constants.LabelQueueName], "root.default")
+		assert.Equal(t, result[constants.CanonicalLabelQueueName], defaultQueueName)
+		assert.Equal(t, result[constants.LabelQueueName], defaultQueueName)
 		assert.Equal(t, strings.HasPrefix(result[constants.CanonicalLabelApplicationID], constants.AutoGenAppPrefix), true)
 		assert.Equal(t, strings.HasPrefix(result[constants.LabelApplicationID], constants.AutoGenAppPrefix), true)
 	} else {

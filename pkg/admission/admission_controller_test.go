@@ -461,8 +461,8 @@ func TestMutate(t *testing.T) {
 	resp = ac.mutate(req)
 	assert.Check(t, resp.Allowed, "response not allowed for pod")
 	assert.Equal(t, schedulerName(t, resp.Patch), "yunikorn", "yunikorn not set as scheduler for pod")
-	assert.Equal(t, labels(t, resp.Patch)["applicationId"], "yunikorn-default-autogen", "wrong applicationId label")
-	assert.Equal(t, labels(t, resp.Patch)["queue"], "root.default", "incorrect queue name")
+	assert.Equal(t, labels(t, resp.Patch)[constants.LabelApplicationID], "yunikorn-default-autogen", "wrong applicationId label")
+	assert.Equal(t, labels(t, resp.Patch)[constants.LabelQueueName], "root.default", "incorrect queue name")
 
 	// pod without applicationID
 	pod = v1.Pod{ObjectMeta: metav1.ObjectMeta{
@@ -479,17 +479,17 @@ func TestMutate(t *testing.T) {
 	resp = ac.mutate(req)
 	assert.Check(t, resp.Allowed, "response not allowed for pod")
 	assert.Equal(t, schedulerName(t, resp.Patch), "yunikorn", "yunikorn not set as scheduler for pod")
-	assert.Equal(t, labels(t, resp.Patch)["applicationId"], "yunikorn-test-ns-autogen", "wrong applicationId label")
+	assert.Equal(t, labels(t, resp.Patch)[constants.LabelApplicationID], "yunikorn-test-ns-autogen", "wrong applicationId label")
 
 	// pod with applicationId
-	pod.ObjectMeta.Labels = map[string]string{"applicationId": "test-app"}
+	pod.ObjectMeta.Labels = map[string]string{constants.LabelApplicationID: "test-app"}
 	podJSON, err = json.Marshal(pod)
 	assert.NilError(t, err, "failed to marshal pod")
 	req.Object = runtime.RawExtension{Raw: podJSON}
 	resp = ac.mutate(req)
 	assert.Check(t, resp.Allowed, "response not allowed for pod")
 	assert.Equal(t, schedulerName(t, resp.Patch), "yunikorn", "yunikorn not set as scheduler for pod")
-	assert.Equal(t, labels(t, resp.Patch)["applicationId"], "test-app", "wrong applicationId label")
+	assert.Equal(t, labels(t, resp.Patch)[constants.LabelApplicationID], "test-app", "wrong applicationId label")
 
 	// pod in bypassed namespace
 	pod = v1.Pod{ObjectMeta: metav1.ObjectMeta{
