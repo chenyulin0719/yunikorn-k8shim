@@ -95,11 +95,12 @@ func RegisterEventHandler(handlerID string, eventType EventType, handlerFn func(
 	if _, ok := eventDispatcher.handlers[eventType]; !ok {
 		eventDispatcher.handlers[eventType] = make(map[string]func(interface{}))
 	}
-
-	if _, ok := eventDispatcher.handlers[eventType][handlerID]; ok {
-		log.Log(log.ShimDispatcher).Info("### Overwrite the existing handler with the same handlerID",
-			zap.String("eventType", eventTypeName[eventType]),
-			zap.String("handlerIDs", handlerID))
+	if eventType == EventTypeNode {
+		if _, ok := eventDispatcher.handlers[eventType][handlerID]; ok {
+			log.Log(log.ShimDispatcher).Info("### Overwrite the existing handler with the same handlerID",
+				zap.String("eventType", eventTypeName[eventType]),
+				zap.String("handlerIDs", handlerID))
+		}
 	}
 	eventDispatcher.handlers[eventType][handlerID] = handlerFn
 }
@@ -122,7 +123,7 @@ func UnregisterEventHandler(handlerID string, eventType EventType) {
 		if len(eventDispatcher.handlers[eventType]) == 0 {
 			delete(eventDispatcher.handlers, eventType)
 		}
-	} else {
+	} else if eventType == EventTypeNode {
 		log.Log(log.ShimDispatcher).Info("### The handler has been clenup already",
 			zap.String("eventType", eventTypeName[eventType]),
 			zap.String("handlerIDs", handlerID))
