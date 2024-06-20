@@ -20,6 +20,7 @@ package cache
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -42,7 +43,8 @@ import (
 )
 
 func TestUpdateAllocation_NewTask(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 
@@ -65,7 +67,8 @@ func TestUpdateAllocation_NewTask(t *testing.T) {
 }
 
 func TestUpdateAllocation_NewTask_TaskNotFound(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	pod := context.getTask(appID, taskUID1).pod
@@ -86,7 +89,8 @@ func TestUpdateAllocation_NewTask_TaskNotFound(t *testing.T) {
 
 func TestUpdateAllocation_NewTask_AssumePodFails(t *testing.T) {
 	t.Skip("disabled until YUNIKORN-2629 is resolved") // test can randomly trigger a deadlock, resulting in a failed build
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	binder := test.NewVolumeBinderMock()
@@ -113,7 +117,9 @@ func TestUpdateAllocation_NewTask_AssumePodFails(t *testing.T) {
 }
 
 func TestUpdateAllocation_NewTask_PodAlreadyAssigned(t *testing.T) {
-	callback, context := initCallbackTest(t, true, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, true, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, true, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 
@@ -135,7 +141,9 @@ func TestUpdateAllocation_NewTask_PodAlreadyAssigned(t *testing.T) {
 }
 
 func TestUpdateAllocation_AskRejected(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 
@@ -156,7 +164,9 @@ func TestUpdateAllocation_AskRejected(t *testing.T) {
 }
 
 func TestUpdateAllocation_AllocationRejected(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 
@@ -178,7 +188,10 @@ func TestUpdateAllocation_AllocationRejected(t *testing.T) {
 
 func TestUpdateAllocation_AllocationReleased(t *testing.T) {
 	// release allocation where terminationType != TerminationType_STOPPED_BY_RM
-	callback, context := initCallbackTest(t, false, false)
+
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	err := context.AssumePod(taskUID1, fakeNodeName)
@@ -211,7 +224,9 @@ func TestUpdateAllocation_AllocationReleased(t *testing.T) {
 
 func TestUpdateAllocation_AllocationReleased_StoppedByRM(t *testing.T) {
 	// release allocation where terminationType == TerminationType_STOPPED_BY_RM
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	err := context.AssumePod(taskUID1, fakeNodeName)
@@ -241,7 +256,9 @@ func TestUpdateAllocation_AllocationReleased_StoppedByRM(t *testing.T) {
 }
 
 func TestUpdateAllocation_AskReleased(t *testing.T) {
-	callback, context := initCallbackTest(t, false, true)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, true, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, true)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	app := context.getApplication(appID)
@@ -268,7 +285,9 @@ func TestUpdateAllocation_AskReleased(t *testing.T) {
 }
 
 func TestUpdateApplication_Accepted(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	app := context.getApplication(appID)
@@ -289,7 +308,9 @@ func TestUpdateApplication_Accepted(t *testing.T) {
 }
 
 func TestUpdateApplication_Rejected(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	app := context.getApplication(appID)
@@ -317,7 +338,9 @@ func TestUpdateApplication_Rejected(t *testing.T) {
 }
 
 func TestUpdateApplication_Completed(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 
@@ -334,7 +357,9 @@ func TestUpdateApplication_Completed(t *testing.T) {
 }
 
 func TestUpdateApplication_Resuming_AppReserving(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	app := context.getApplication(appID)
@@ -356,7 +381,9 @@ func TestUpdateApplication_Resuming_AppReserving(t *testing.T) {
 }
 
 func TestUpdateApplication_Resuming_AppNotReserving(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	app := context.getApplication(appID)
@@ -376,7 +403,9 @@ func TestUpdateApplication_Resuming_AppNotReserving(t *testing.T) {
 }
 
 func TestUpdateApplication_Resuming_AppNotFound(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	app := context.getApplication(appID)
@@ -402,7 +431,9 @@ func TestUpdateApplication_Failed(t *testing.T) {
 }
 
 func testUpdateApplicationFailure(t *testing.T, state string) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	app := context.getApplication(appID)
@@ -451,7 +482,9 @@ func TestUpdateNode_Rejected(t *testing.T) {
 }
 
 func testUpdateNode(t *testing.T, expectedEvent string, response *si.NodeResponse) {
-	callback, _ := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, _ := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, _ := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	var nodeName atomic.Value
@@ -474,7 +507,9 @@ func testUpdateNode(t *testing.T, expectedEvent string, response *si.NodeRespons
 }
 
 func TestPredicates(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	context.predManager = &mockPredicateManager{}
@@ -489,7 +524,9 @@ func TestPredicates(t *testing.T) {
 }
 
 func TestPreemptionPredicates(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 	context.predManager = &mockPredicateManager{}
@@ -505,7 +542,9 @@ func TestPreemptionPredicates(t *testing.T) {
 }
 
 func TestSendEvent(t *testing.T) {
-	callback, _ := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, _ := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, _ := initCallbackTest(t, false, false)
 	recorder := k8sEvents.NewFakeRecorder(1024)
 	events.SetRecorder(recorder)
 	defer dispatcher.UnregisterAllEventHandlers()
@@ -535,7 +574,9 @@ func TestSendEvent(t *testing.T) {
 }
 
 func TestUpdateContainerSchedulingState(t *testing.T) {
-	callback, context := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, context := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, context := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 
@@ -550,7 +591,9 @@ func TestUpdateContainerSchedulingState(t *testing.T) {
 }
 
 func TestCallbackGetStateDump(t *testing.T) {
-	callback, _ := initCallbackTest(t, false, false)
+	fakeNodeName := fmt.Sprintf("fake-node-%d", global_node_txnID.Add(1))
+	callback, _ := initCallbackTest(t, false, false, fakeNodeName)
+	// callback, _ := initCallbackTest(t, false, false)
 	defer dispatcher.UnregisterAllEventHandlers()
 	defer dispatcher.Stop()
 
@@ -578,7 +621,7 @@ func (m *mockPredicateManager) PreemptionPredicates(_ *v1.Pod, _ *framework.Node
 	return 0
 }
 
-func initCallbackTest(t *testing.T, podAssigned, placeholder bool) (*AsyncRMCallback, *Context) {
+func initCallbackTest(t *testing.T, podAssigned, placeholder bool, fakeNodeName string) (*AsyncRMCallback, *Context) {
 	context, apiProvider := initContextAndAPIProviderForTest()
 	dispatcher.Start()
 	dispatcher.RegisterEventHandler("TestAppHandler", dispatcher.EventTypeApp, context.ApplicationEventHandler())
