@@ -191,6 +191,8 @@ func getEventHandler(eventType EventType) func(interface{}) {
 				nodeEvent, ok := event.(CachedSchedulerNodeEvent)
 				if ok {
 					log.Log(log.ShimDispatcher).Warn("### the unhandled node event is:", zap.String("NodeID", nodeEvent.NodeID), zap.String("Event", nodeEventTypeName[nodeEvent.Event]))
+				} else {
+					log.Log(log.ShimDispatcher).Warn("### failed to parse the unhandled node event.", zap.Any("event", event))
 				}
 			}
 		}
