@@ -80,14 +80,6 @@ func initDispatcher() {
 }
 
 func RegisterEventHandler(handlerID string, eventType EventType, handlerFn func(interface{})) {
-	eventDispatcher := getDispatcher()
-	eventDispatcher.lock.Lock()
-	defer eventDispatcher.lock.Unlock()
-	if _, ok := eventDispatcher.handlers[eventType]; !ok {
-		eventDispatcher.handlers[eventType] = make(map[string]func(interface{}))
-	}
-	eventDispatcher.handlers[eventType][handlerID] = handlerFn
-
 	var eventTypeName = map[EventType]string{
 		EventTypeApp:  "EventTypeApp",
 		EventTypeTask: "EventTypeTask",
@@ -96,19 +88,23 @@ func RegisterEventHandler(handlerID string, eventType EventType, handlerFn func(
 	log.Log(log.ShimDispatcher).Info("### Someone called RegisterEventHandler() to register event handler",
 		zap.String("eventType", eventTypeName[eventType]),
 		zap.String("handlerIDs", handlerID))
-}
 
-func UnregisterEventHandler(handlerID string, eventType EventType) {
 	eventDispatcher := getDispatcher()
 	eventDispatcher.lock.Lock()
 	defer eventDispatcher.lock.Unlock()
-	if _, ok := eventDispatcher.handlers[eventType]; ok {
-		delete(eventDispatcher.handlers[eventType], handlerID)
-		if len(eventDispatcher.handlers[eventType]) == 0 {
-			delete(eventDispatcher.handlers, eventType)
-		}
+	if _, ok := eventDispatcher.handlers[eventType]; !ok {
+		eventDispatcher.handlers[eventType] = make(map[string]func(interface{}))
 	}
 
+	if _, ok := eventDispatcher.handlers[eventType][handlerID]; ok {
+		log.Log(log.ShimDispatcher).Info("### Overwrite the existing handler with the same handlerID",
+			zap.String("eventType", eventTypeName[eventType]),
+			zap.String("handlerIDs", handlerID))
+	}
+	eventDispatcher.handlers[eventType][handlerID] = handlerFn
+}
+
+func UnregisterEventHandler(handlerID string, eventType EventType) {
 	var eventTypeName = map[EventType]string{
 		EventTypeApp:  "EventTypeApp",
 		EventTypeTask: "EventTypeTask",
@@ -117,6 +113,20 @@ func UnregisterEventHandler(handlerID string, eventType EventType) {
 	log.Log(log.ShimDispatcher).Info("### Someone called UnregisterEventHandler() to clean",
 		zap.String("eventType", eventTypeName[eventType]),
 		zap.String("handlerIDs", handlerID))
+
+	eventDispatcher := getDispatcher()
+	eventDispatcher.lock.Lock()
+	defer eventDispatcher.lock.Unlock()
+	if _, ok := eventDispatcher.handlers[eventType]; ok {
+		delete(eventDispatcher.handlers[eventType], handlerID)
+		if len(eventDispatcher.handlers[eventType]) == 0 {
+			delete(eventDispatcher.handlers, eventType)
+		}
+	} else {
+		log.Log(log.ShimDispatcher).Info("### The handler has been clenup already",
+			zap.String("eventType", eventTypeName[eventType]),
+			zap.String("handlerIDs", handlerID))
+	}
 }
 
 func UnregisterAllEventHandlers() {
