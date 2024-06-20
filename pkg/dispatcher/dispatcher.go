@@ -165,7 +165,24 @@ func getEventHandler(eventType EventType) func(interface{}) {
 				EventTypeTask: "EventTypeTask",
 				EventTypeNode: "EventTypeNode",
 			}
+
+			var nodeEventTypeName = map[int]string{
+				1: "NodeAccepted",
+				2: "NodeRejected",
+			}
+			type CachedSchedulerNodeEvent struct {
+				NodeID string
+				Event  int
+			}
+
 			log.Log(log.ShimDispatcher).Warn("### No handler to handle the event:", zap.String("eventType", eventTypeName[eventType]))
+			if eventType == EventTypeNode {
+				nodeEvent, ok := event.(CachedSchedulerNodeEvent)
+				if ok {
+					log.Log(log.ShimDispatcher).Warn("### the unhandled node event is:", zap.String("NodeID", nodeEvent.NodeID), zap.String("Event", nodeEventTypeName[nodeEvent.Event]))
+				}
+			}
+
 		}
 		for _, handler := range handlers {
 			handler(event)
