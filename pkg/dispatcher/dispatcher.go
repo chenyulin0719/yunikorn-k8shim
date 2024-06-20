@@ -93,7 +93,7 @@ func RegisterEventHandler(handlerID string, eventType EventType, handlerFn func(
 		EventTypeTask: "EventTypeTask",
 		EventTypeNode: "EventTypeNode",
 	}
-	log.Log(log.ShimDispatcher).Info("### Someone RegisterEventHandler() to register event handler",
+	log.Log(log.ShimDispatcher).Info("### Someone called RegisterEventHandler() to register event handler",
 		zap.String("eventType", eventTypeName[eventType]),
 		zap.String("handlerIDs", handlerID))
 }
@@ -159,6 +159,14 @@ func getEventHandler(eventType EventType) func(interface{}) {
 		handlers = append(handlers, handler)
 	}
 	return func(event interface{}) {
+		if len(handlers) == 0 {
+			var eventTypeName = map[EventType]string{
+				EventTypeApp:  "EventTypeApp",
+				EventTypeTask: "EventTypeTask",
+				EventTypeNode: "EventTypeNode",
+			}
+			log.Log(log.ShimDispatcher).Warn("### No handler to handle the event:", zap.String("eventType", eventTypeName[eventType]))
+		}
 		for _, handler := range handlers {
 			handler(event)
 		}
