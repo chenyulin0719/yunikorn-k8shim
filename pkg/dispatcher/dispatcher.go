@@ -105,6 +105,18 @@ func UnregisterAllEventHandlers() {
 	eventDispatcher := getDispatcher()
 	eventDispatcher.lock.Lock()
 	defer eventDispatcher.lock.Unlock()
+
+	eventTypes := []EventType{EventTypeApp, EventTypeTask, EventTypeNode}
+	for _, eventType := range eventTypes {
+		if handlers, ok := eventDispatcher.handlers[eventType]; ok {
+			keys := make([]string, 0, len(handlers))
+			for key := range handlers {
+				keys = append(keys, key)
+			}
+			fmt.Printf("### Found  unexpected cleanup for EventTypeNode hadnler.  handlerIDs: %v\n", keys)
+		}
+	}
+
 	eventDispatcher.handlers = make(map[EventType]map[string]func(interface{}))
 }
 
