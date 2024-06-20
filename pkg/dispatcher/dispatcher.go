@@ -170,32 +170,34 @@ func getEventHandler(eventType EventType) func(interface{}) {
 		handlers = append(handlers, handler)
 	}
 	return func(event interface{}) {
+		var eventTypeName = map[EventType]string{
+			EventTypeApp:  "EventTypeApp",
+			EventTypeTask: "EventTypeTask",
+			EventTypeNode: "EventTypeNode",
+		}
+
+		// var nodeEventTypeName = map[int]string{
+		// 	0: "NodeAccepted",
+		// 	1: "NodeRejected",
+		// }
+		type CachedSchedulerNodeEvent struct {
+			NodeID string
+			Event  int
+		}
+
 		if len(handlers) == 0 {
-			var eventTypeName = map[EventType]string{
-				EventTypeApp:  "EventTypeApp",
-				EventTypeTask: "EventTypeTask",
-				EventTypeNode: "EventTypeNode",
-			}
-
-			var nodeEventTypeName = map[int]string{
-				0: "NodeAccepted",
-				1: "NodeRejected",
-			}
-			type CachedSchedulerNodeEvent struct {
-				NodeID string
-				Event  int
-			}
-
 			log.Log(log.ShimDispatcher).Warn("### No handler to handle the event:", zap.String("eventType", eventTypeName[eventType]))
 			if eventType == EventTypeNode {
-				nodeEvent, ok := event.(CachedSchedulerNodeEvent)
-				if ok {
-					log.Log(log.ShimDispatcher).Warn("### the unhandled node event is:", zap.String("NodeID", nodeEvent.NodeID), zap.String("Event", nodeEventTypeName[nodeEvent.Event]))
-				} else {
-					log.Log(log.ShimDispatcher).Warn("### failed to parse the unhandled node event.", zap.Any("event", event))
-				}
+				// nodeEvent, ok := event.(CachedSchedulerNodeEvent)
+				log.Log(log.ShimDispatcher).Warn("### missing handler to handle node event: ", zap.Any("event", event))
+
+			}
+		} else {
+			if eventType == EventTypeNode {
+				log.Log(log.ShimDispatcher).Warn("### have handler to handle node event: ", zap.Any("event", event))
 			}
 		}
+
 		for _, handler := range handlers {
 			handler(event)
 		}
