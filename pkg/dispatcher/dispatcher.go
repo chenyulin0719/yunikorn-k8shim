@@ -178,8 +178,8 @@ func getEventHandler(eventType EventType) func(interface{}) {
 			}
 
 			var nodeEventTypeName = map[int]string{
-				1: "NodeAccepted",
-				2: "NodeRejected",
+				0: "NodeAccepted",
+				1: "NodeRejected",
 			}
 			type CachedSchedulerNodeEvent struct {
 				NodeID string
