@@ -58,6 +58,8 @@ import (
 
 const registerNodeContextHandler = "RegisterNodeContextHandler"
 
+var global_txnID atomic.Uint64
+
 var (
 	ErrorPodNotFound  = errors.New("predicates were not run because pod was not found in cache")
 	ErrorNodeNotFound = errors.New("predicates were not run because node was not found in cache")
@@ -73,8 +75,8 @@ type Context struct {
 	namespace      string                         // yunikorn namespace
 	configMaps     []*v1.ConfigMap                // cached yunikorn configmaps
 	lock           *locking.RWMutex               // lock
-	txnID          atomic.Uint64                  // transaction ID counter
-	klogger        klog.Logger
+	// txnID          atomic.Uint64                  // transaction ID counter
+	klogger klog.Logger
 }
 
 // NewContext create a new context for the scheduler using a default (empty) configuration
@@ -1569,7 +1571,7 @@ func (ctx *Context) registerNodes(nodes []*v1.Node) ([]*v1.Node, error) {
 	wg.Add(len(pendingNodes))
 
 	// register with the dispatcher so that we can track our response
-	handlerID := fmt.Sprintf("%s-%d", registerNodeContextHandler, ctx.txnID.Add(1))
+	handlerID := fmt.Sprintf("%s-%d", registerNodeContextHandler, global_txnID.Add(1))
 	dispatcher.RegisterEventHandler(handlerID, dispatcher.EventTypeNode, func(event interface{}) {
 		nodeEvent, ok := event.(CachedSchedulerNodeEvent)
 		if !ok {
