@@ -1603,10 +1603,10 @@ func (ctx *Context) registerNodes(nodes []*v1.Node) ([]*v1.Node, error) {
 		return nil, err
 	}
 
-	log.Log(log.ShimContext).Info("### registered EventTypeNode event handler and waiting for response.", zap.String("handlerID", handlerID))
+	log.Log(log.ShimContext).Info("### waiting for someone trigger EventTypeNode handler.", zap.String("handlerID", handlerID))
 	// wait for all responses to accumulate
 	wg.Wait()
-	log.Log(log.ShimContext).Info("### got response from EventTypeNode event handler.", zap.String("handlerID", handlerID))
+	log.Log(log.ShimContext).Info("### someone triggered EventTypeNode handler", zap.String("handlerID", handlerID))
 
 	for _, node := range acceptedNodes {
 		// post a successful event to the node

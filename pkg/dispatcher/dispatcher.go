@@ -87,6 +87,15 @@ func RegisterEventHandler(handlerID string, eventType EventType, handlerFn func(
 		eventDispatcher.handlers[eventType] = make(map[string]func(interface{}))
 	}
 	eventDispatcher.handlers[eventType][handlerID] = handlerFn
+
+	var eventTypeName = map[EventType]string{
+		EventTypeApp:  "EventTypeApp",
+		EventTypeTask: "EventTypeTask",
+		EventTypeNode: "EventTypeNode",
+	}
+	log.Log(log.ShimDispatcher).Info("### Someone RegisterEventHandler() to register event handler",
+		zap.String("eventType", eventTypeName[eventType]),
+		zap.String("handlerIDs", handlerID))
 }
 
 func UnregisterEventHandler(handlerID string, eventType EventType) {
@@ -99,6 +108,15 @@ func UnregisterEventHandler(handlerID string, eventType EventType) {
 			delete(eventDispatcher.handlers, eventType)
 		}
 	}
+
+	var eventTypeName = map[EventType]string{
+		EventTypeApp:  "EventTypeApp",
+		EventTypeTask: "EventTypeTask",
+		EventTypeNode: "EventTypeNode",
+	}
+	log.Log(log.ShimDispatcher).Info("### Someone called UnregisterEventHandler() to clean",
+		zap.String("eventType", eventTypeName[eventType]),
+		zap.String("handlerIDs", handlerID))
 }
 
 func UnregisterAllEventHandlers() {
@@ -107,13 +125,23 @@ func UnregisterAllEventHandlers() {
 	defer eventDispatcher.lock.Unlock()
 
 	eventTypes := []EventType{EventTypeApp, EventTypeTask, EventTypeNode}
+	// eventTypes := []EventType{EventTypeNode}
+	var eventTypeName = map[EventType]string{
+		EventTypeApp:  "EventTypeApp",
+		EventTypeTask: "EventTypeTask",
+		EventTypeNode: "EventTypeNode",
+	}
+
 	for _, eventType := range eventTypes {
 		if handlers, ok := eventDispatcher.handlers[eventType]; ok {
 			keys := make([]string, 0, len(handlers))
 			for key := range handlers {
 				keys = append(keys, key)
 			}
-			fmt.Printf("### Found  unexpected cleanup for EventTypeNode hadnler.  handlerIDs: %v\n", keys)
+
+			log.Log(log.ShimDispatcher).Info("### UnregisterAllEventHandlers() cleanup all event hadnler",
+				zap.String("eventType", eventTypeName[eventType]),
+				zap.Any("handlerIDs", keys))
 		}
 	}
 
