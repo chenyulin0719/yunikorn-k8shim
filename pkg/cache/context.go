@@ -59,6 +59,7 @@ import (
 const registerNodeContextHandler = "RegisterNodeContextHandler"
 
 var global_txnID atomic.Uint64
+var global_node_txnID atomic.Uint64
 
 var (
 	ErrorPodNotFound  = errors.New("predicates were not run because pod was not found in cache")
