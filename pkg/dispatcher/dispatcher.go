@@ -182,7 +182,6 @@ func getEventHandler(eventType EventType) func(interface{}) {
 					log.Log(log.ShimDispatcher).Warn("### the unhandled node event is:", zap.String("NodeID", nodeEvent.NodeID), zap.String("Event", nodeEventTypeName[nodeEvent.Event]))
 				}
 			}
-
 		}
 		for _, handler := range handlers {
 			handler(event)
