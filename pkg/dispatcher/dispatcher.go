@@ -80,16 +80,41 @@ func initDispatcher() {
 }
 
 func RegisterEventHandler(handlerID string, eventType EventType, handlerFn func(interface{})) {
+	var eventTypeName = map[EventType]string{
+		EventTypeApp:  "EventTypeApp",
+		EventTypeTask: "EventTypeTask",
+		EventTypeNode: "EventTypeNode",
+	}
+	log.Log(log.ShimDispatcher).Info("### Someone called RegisterEventHandler() to register event handler",
+		zap.String("eventType", eventTypeName[eventType]),
+		zap.String("handlerIDs", handlerID))
+
 	eventDispatcher := getDispatcher()
 	eventDispatcher.lock.Lock()
 	defer eventDispatcher.lock.Unlock()
 	if _, ok := eventDispatcher.handlers[eventType]; !ok {
 		eventDispatcher.handlers[eventType] = make(map[string]func(interface{}))
 	}
+	if eventType == EventTypeNode {
+		if _, ok := eventDispatcher.handlers[eventType][handlerID]; ok {
+			log.Log(log.ShimDispatcher).Info("### Overwrite the existing handler with the same handlerID",
+				zap.String("eventType", eventTypeName[eventType]),
+				zap.String("handlerIDs", handlerID))
+		}
+	}
 	eventDispatcher.handlers[eventType][handlerID] = handlerFn
 }
 
 func UnregisterEventHandler(handlerID string, eventType EventType) {
+	var eventTypeName = map[EventType]string{
+		EventTypeApp:  "EventTypeApp",
+		EventTypeTask: "EventTypeTask",
+		EventTypeNode: "EventTypeNode",
+	}
+	log.Log(log.ShimDispatcher).Info("### Someone called UnregisterEventHandler() to clean",
+		zap.String("eventType", eventTypeName[eventType]),
+		zap.String("handlerIDs", handlerID))
+
 	eventDispatcher := getDispatcher()
 	eventDispatcher.lock.Lock()
 	defer eventDispatcher.lock.Unlock()
@@ -98,6 +123,10 @@ func UnregisterEventHandler(handlerID string, eventType EventType) {
 		if len(eventDispatcher.handlers[eventType]) == 0 {
 			delete(eventDispatcher.handlers, eventType)
 		}
+	} else if eventType == EventTypeNode {
+		log.Log(log.ShimDispatcher).Info("### The handler has been clenup already",
+			zap.String("eventType", eventTypeName[eventType]),
+			zap.String("handlerIDs", handlerID))
 	}
 }
 
@@ -105,6 +134,28 @@ func UnregisterAllEventHandlers() {
 	eventDispatcher := getDispatcher()
 	eventDispatcher.lock.Lock()
 	defer eventDispatcher.lock.Unlock()
+
+	eventTypes := []EventType{EventTypeApp, EventTypeTask, EventTypeNode}
+	// eventTypes := []EventType{EventTypeNode}
+	var eventTypeName = map[EventType]string{
+		EventTypeApp:  "EventTypeApp",
+		EventTypeTask: "EventTypeTask",
+		EventTypeNode: "EventTypeNode",
+	}
+
+	for _, eventType := range eventTypes {
+		if handlers, ok := eventDispatcher.handlers[eventType]; ok {
+			keys := make([]string, 0, len(handlers))
+			for key := range handlers {
+				keys = append(keys, key)
+			}
+
+			log.Log(log.ShimDispatcher).Info("### UnregisterAllEventHandlers() cleanup all event hadnler",
+				zap.String("eventType", eventTypeName[eventType]),
+				zap.Any("handlerIDs", keys))
+		}
+	}
+
 	eventDispatcher.handlers = make(map[EventType]map[string]func(interface{}))
 }
 
@@ -119,6 +170,31 @@ func getEventHandler(eventType EventType) func(interface{}) {
 		handlers = append(handlers, handler)
 	}
 	return func(event interface{}) {
+		var eventTypeName = map[EventType]string{
+			EventTypeApp:  "EventTypeApp",
+			EventTypeTask: "EventTypeTask",
+			EventTypeNode: "EventTypeNode",
+		}
+
+		// var nodeEventTypeName = map[int]string{
+		// 	0: "NodeAccepted",
+		// 	1: "NodeRejected",
+		// }
+		// type CachedSchedulerNodeEvent struct {
+		// 	NodeID string
+		// 	Event  int
+		// }
+
+		if len(handlers) == 0 {
+			log.Log(log.ShimDispatcher).Warn("### No handler to handle the event:", zap.String("eventType", eventTypeName[eventType]))
+			if eventType == EventTypeNode {
+				// nodeEvent, ok := event.(CachedSchedulerNodeEvent)
+				log.Log(log.ShimDispatcher).Warn("### missing handler to handle node event: ", zap.Any("event", event))
+			}
+		} else if eventType == EventTypeNode {
+			log.Log(log.ShimDispatcher).Warn("### have handler to handle node event: ", zap.Any("event", event))
+		}
+
 		for _, handler := range handlers {
 			handler(event)
 		}
