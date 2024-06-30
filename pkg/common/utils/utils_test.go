@@ -617,7 +617,7 @@ func TestGetApplicationIDFromPod(t *testing.T) {
 				Labels:      map[string]string{constants.LabelApplicationID: appIDInLabel},
 			},
 			Spec: v1.PodSpec{SchedulerName: constants.SchedulerName},
-		}, appIDInLabel, appIDInLabel, false},
+		}, appIDInAnnotation, appIDInAnnotation, false},
 
 		{"Spark AppID defined in spark app selector", &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -631,14 +631,14 @@ func TestGetApplicationIDFromPod(t *testing.T) {
 				Annotations: map[string]string{constants.AnnotationApplicationID: sparkIDInAnnotation},
 			},
 			Spec: v1.PodSpec{SchedulerName: constants.SchedulerName},
-		}, appIDInSelector, appIDInSelector, false},
+		}, sparkIDInAnnotation, sparkIDInAnnotation, false},
 		{"Spark AppID defined in spark app selector and annotation", &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      map[string]string{constants.SparkLabelAppID: appIDInSelector, constants.LabelApplicationID: appIDInLabel},
 				Annotations: map[string]string{constants.AnnotationApplicationID: sparkIDInAnnotation},
 			},
 			Spec: v1.PodSpec{SchedulerName: constants.SchedulerName},
-		}, appIDInLabel, appIDInLabel, false},
+		}, sparkIDInAnnotation, sparkIDInAnnotation, false},
 		{"No AppID defined", &v1.Pod{}, "", "", false},
 		{"Spark AppID defined in spark app selector and label", &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
@@ -988,7 +988,7 @@ func TestGetQueueNameFromPod(t *testing.T) {
 					Annotations: map[string]string{constants.AnnotationQueueName: queueInAnnotation},
 				},
 			},
-			expectedQueue: queueInLabel,
+			expectedQueue: queueInAnnotation,
 		},
 		{
 			name: "Without queue label and annotation",

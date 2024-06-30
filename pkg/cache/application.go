@@ -396,7 +396,7 @@ func (app *Application) scheduleTasks(taskScheduleCondition func(t *Task) bool) 
 		if taskScheduleCondition(task) {
 			// for each new task, we do a sanity check before moving the state to Pending_Schedule
 			// if the task is not ready for scheduling, we keep it in New state
-			// if the task pod is bounded and have conflicting metadata, we move the task to Rejected state
+			// After version 1.7.0, if the task pod is bounded and have conflicting metadata, we move the task to Rejected state
 			err, rejectTask := task.sanityCheckBeforeScheduling()
 
 			if err == nil {
@@ -410,19 +410,24 @@ func (app *Application) scheduleTasks(taskScheduleCondition func(t *Task) bool) 
 					log.Log(log.ShimCacheApplication).Warn("init task failed", zap.Error(err))
 				}
 			} else {
-				if !rejectTask {
+				if rejectTask {
+					// Before version 1.7.0, task.sanityCheckBeforeScheduling() would never return an err when pod has conflicting metadata.
+					// Before version 1.7.0, this path would never be reached.
+					// After version 1.7.0, tasks should be rejected if pod has conflicting metadata.
+					log.Log(log.ShimCacheApplication).Error("This path should never be reached before version 1.7.0. We only reject tasks when pod has conflicting metadata after version 1.7.0")
+
+					// task transits to Rejected state
+					if handleErr := task.handle(
+						NewRejectTaskEvent(task.applicationID, task.taskID, err.Error())); handleErr != nil {
+						log.Log(log.ShimCacheApplication).Warn("reject task failed", zap.Error(err))
+					}
+				} else {
 					// no state transition
 					events.GetRecorder().Eventf(task.GetTaskPod().DeepCopy(), nil, v1.EventTypeWarning, "FailedScheduling", "FailedScheduling", err.Error())
 					log.Log(log.ShimCacheApplication).Debug("task is not ready for scheduling",
 						zap.String("appID", task.applicationID),
 						zap.String("taskID", task.taskID),
 						zap.Error(err))
-				} else {
-					// task transits to Rejected state
-					if handleErr := task.handle(
-						NewRejectTaskEvent(task.applicationID, task.taskID, err.Error())); handleErr != nil {
-						log.Log(log.ShimCacheApplication).Warn("reject task failed", zap.Error(err))
-					}
 				}
 			}
 		}
