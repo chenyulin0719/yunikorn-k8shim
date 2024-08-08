@@ -20,6 +20,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -44,6 +45,10 @@ const userInfoKey = siCommon.DomainYuniKorn + "user.info"
 const uniqueAutogenSuffix = "-uniqueautogen"
 
 var pluginMode bool
+var (
+	// ErrorTimeout returned if waiting for a condition times out
+	ErrorTimeout = errors.New("timeout waiting for condition")
+)
 
 func SetPluginMode(value bool) {
 	pluginMode = value
@@ -104,12 +109,20 @@ func IsAssignedPod(pod *v1.Pod) bool {
 }
 
 func GetQueueNameFromPod(pod *v1.Pod) string {
+	// Queue name can be defined in multiple places
+	// The queue name is determined by the following order
+	// 1. Label: constants.CanonicalLabelQueueName
+	// 2. Annotation: constants.AnnotationQueueName
+	// 3. Label: constants.LabelQueueName
 	queueName := ""
-	if an := GetPodLabelValue(pod, constants.LabelQueueName); an != "" {
-		queueName = an
-	} else if qu := GetPodAnnotationValue(pod, constants.AnnotationQueueName); qu != "" {
-		queueName = qu
+	if canonicalLabelQueueName := GetPodLabelValue(pod, constants.CanonicalLabelQueueName); canonicalLabelQueueName != "" {
+		queueName = canonicalLabelQueueName
+	} else if annotationQueueName := GetPodAnnotationValue(pod, constants.AnnotationQueueName); annotationQueueName != "" {
+		queueName = annotationQueueName
+	} else if labelQueueName := GetPodLabelValue(pod, constants.LabelQueueName); labelQueueName != "" {
+		queueName = labelQueueName
 	}
+
 	return queueName
 }
 
@@ -154,15 +167,30 @@ func GetApplicationIDFromPod(pod *v1.Pod) string {
 		}
 	}
 
-	// Application ID can be defined in annotation
-	appID := GetPodAnnotationValue(pod, constants.AnnotationApplicationID)
+	// Application ID can be defined in multiple places
+	// The application ID is determined by the following order.
+	// 1. Label: constants.CanonicalLabelApplicationID
+	// 2. Annotation: constants.AnnotationApplicationID
+	// 3. Label: constants.LabelApplicationID
+	// 4. Label: constants.SparkLabelAppID
+
+	appID := GetPodLabelValue(pod, constants.CanonicalLabelApplicationID)
+
 	if appID == "" {
-		// Application ID can be defined in label
-		appID = GetPodLabelValue(pod, constants.LabelApplicationID)
+		appID = GetPodAnnotationValue(pod, constants.AnnotationApplicationID)
 	}
+
 	if appID == "" {
-		// Spark can also define application ID
-		appID = GetPodLabelValue(pod, constants.SparkLabelAppID)
+		labelKeys := []string{
+			constants.LabelApplicationID,
+			constants.SparkLabelAppID,
+		}
+		for _, label := range labelKeys {
+			appID = GetPodLabelValue(pod, label)
+			if appID != "" {
+				break
+			}
+		}
 	}
 
 	// If plugin mode, interpret missing Application ID as a non-YuniKorn pod
@@ -183,6 +211,37 @@ func GetApplicationIDFromPod(pod *v1.Pod) string {
 
 	// Standard deployment mode, so we need a valid Application ID to proceed. Generate one now.
 	return GenerateApplicationID(pod.Namespace, conf.GetSchedulerConf().GenerateUniqueAppIds, string(pod.UID))
+}
+
+// ValidatePodLabelAnnotationConsistency return true if all non-empty values are consistent across provided label/annotation
+func ValidatePodLabelAnnotationConsistency(pod *v1.Pod, labelKeys []string, annotationKeys []string) bool {
+	var firstValue string
+
+	for _, key := range labelKeys {
+		value := GetPodLabelValue(pod, key)
+		if value == "" {
+			continue
+		}
+		if firstValue == "" {
+			firstValue = value
+		} else if firstValue != value {
+			return false
+		}
+	}
+
+	for _, key := range annotationKeys {
+		value := GetPodAnnotationValue(pod, key)
+		if value == "" {
+			continue
+		}
+		if firstValue == "" {
+			firstValue = value
+		} else if firstValue != value {
+			return false
+		}
+	}
+
+	return true
 }
 
 // compare the existing pod condition with the given one, return true if the pod condition remains not changed.
@@ -207,6 +266,27 @@ func GetNamespaceGuaranteedFromAnnotation(namespaceObj *v1.Namespace) *si.Resour
 		return common.GetResource(namespaceGuaranteedMap)
 	}
 	return nil
+}
+
+// get namespace max apps from namespace annotation
+func GetNamespaceMaxAppsFromAnnotation(namespaceObj *v1.Namespace) string {
+	if maxApps := GetNameSpaceAnnotationValue(namespaceObj, constants.NamespaceMaxApps); maxApps != "" {
+		numMaxApp, err := strconv.Atoi(maxApps)
+		if err != nil {
+			log.Log(log.ShimUtils).Warn("Unable to process namespace.maxApps annotation",
+				zap.String("namespace", namespaceObj.Name),
+				zap.String("namespace.maxApps is", maxApps))
+			return ""
+		}
+		if numMaxApp < 0 {
+			log.Log(log.ShimUtils).Warn("Invalid value for namespace.maxApps annotation",
+				zap.String("namespace", namespaceObj.Name),
+				zap.String("namespace.maxApps is", maxApps))
+			return ""
+		}
+		return maxApps
+	}
+	return ""
 }
 
 func GetNamespaceQuotaFromAnnotation(namespaceObj *v1.Namespace) *si.Resource {
@@ -250,7 +330,7 @@ func WaitForCondition(eval func() bool, interval time.Duration, timeout time.Dur
 		}
 
 		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout waiting for condition")
+			return ErrorTimeout
 		}
 
 		time.Sleep(interval)
