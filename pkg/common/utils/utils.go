@@ -20,6 +20,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -44,6 +45,10 @@ const userInfoKey = siCommon.DomainYuniKorn + "user.info"
 const uniqueAutogenSuffix = "-uniqueautogen"
 
 var pluginMode bool
+var (
+	// ErrorTimeout returned if waiting for a condition times out
+	ErrorTimeout = errors.New("timeout waiting for condition")
+)
 
 func SetPluginMode(value bool) {
 	pluginMode = value
@@ -209,6 +214,27 @@ func GetNamespaceGuaranteedFromAnnotation(namespaceObj *v1.Namespace) *si.Resour
 	return nil
 }
 
+// get namespace max apps from namespace annotation
+func GetNamespaceMaxAppsFromAnnotation(namespaceObj *v1.Namespace) string {
+	if maxApps := GetNameSpaceAnnotationValue(namespaceObj, constants.NamespaceMaxApps); maxApps != "" {
+		numMaxApp, err := strconv.Atoi(maxApps)
+		if err != nil {
+			log.Log(log.ShimUtils).Warn("Unable to process namespace.maxApps annotation",
+				zap.String("namespace", namespaceObj.Name),
+				zap.String("namespace.maxApps is", maxApps))
+			return ""
+		}
+		if numMaxApp < 0 {
+			log.Log(log.ShimUtils).Warn("Invalid value for namespace.maxApps annotation",
+				zap.String("namespace", namespaceObj.Name),
+				zap.String("namespace.maxApps is", maxApps))
+			return ""
+		}
+		return maxApps
+	}
+	return ""
+}
+
 func GetNamespaceQuotaFromAnnotation(namespaceObj *v1.Namespace) *si.Resource {
 	// retrieve resource quota info from annotations
 	cpuQuota := GetNameSpaceAnnotationValue(namespaceObj, constants.CPUQuota)
@@ -250,7 +276,7 @@ func WaitForCondition(eval func() bool, interval time.Duration, timeout time.Dur
 		}
 
 		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout waiting for condition")
+			return ErrorTimeout
 		}
 
 		time.Sleep(interval)

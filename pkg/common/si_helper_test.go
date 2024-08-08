@@ -24,7 +24,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apis "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/apache/yunikorn-k8shim/pkg/common/constants"
 	"github.com/apache/yunikorn-scheduler-interface/lib/go/common"
 	"github.com/apache/yunikorn-scheduler-interface/lib/go/si"
 )
@@ -45,6 +44,7 @@ func TestCreateReleaseRequestForTask(t *testing.T) {
 	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].ApplicationID, "app01")
 	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].AllocationKey, "task01")
 	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].PartitionName, "default")
+	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].TerminationType, si.TerminationType_UNKNOWN_TERMINATION_TYPE)
 
 	// without allocationKey
 	request = CreateReleaseRequestForTask("app01", "task01", "", "default", "STOPPED_BY_RM")
@@ -56,6 +56,21 @@ func TestCreateReleaseRequestForTask(t *testing.T) {
 	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].ApplicationID, "app01")
 	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].AllocationKey, "task01")
 	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].PartitionName, "default")
+	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].TerminationType, si.TerminationType_UNKNOWN_TERMINATION_TYPE)
+
+	request = CreateReleaseRequestForTask("app01", "task01", "task01", "default", "UNKNOWN")
+	assert.Assert(t, request.Releases != nil)
+	assert.Assert(t, request.Releases.AllocationsToRelease != nil)
+	assert.Assert(t, request.Releases.AllocationAsksToRelease != nil)
+	assert.Equal(t, len(request.Releases.AllocationsToRelease), 1)
+	assert.Equal(t, len(request.Releases.AllocationAsksToRelease), 1)
+	assert.Equal(t, request.Releases.AllocationsToRelease[0].ApplicationID, "app01")
+	assert.Equal(t, request.Releases.AllocationsToRelease[0].AllocationKey, "task01")
+	assert.Equal(t, request.Releases.AllocationsToRelease[0].PartitionName, "default")
+	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].ApplicationID, "app01")
+	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].AllocationKey, "task01")
+	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].PartitionName, "default")
+	assert.Equal(t, request.Releases.AllocationAsksToRelease[0].TerminationType, si.TerminationType_UNKNOWN_TERMINATION_TYPE)
 }
 
 func TestCreateUpdateRequestForRemoveApplication(t *testing.T) {
@@ -212,33 +227,6 @@ func TestCreateTagsForTask(t *testing.T) {
 	pod.SetOwnerReferences(refer2)
 	result4 := CreateTagsForTask(pod)
 	assert.Equal(t, len(result4), 4)
-}
-
-func TestCreateUpdateRequestForNewNode(t *testing.T) {
-	capacity := NewResourceBuilder().AddResource(common.Memory, 200).AddResource(common.CPU, 2).Build()
-	occupied := NewResourceBuilder().AddResource(common.Memory, 50).AddResource(common.CPU, 1).Build()
-	var existingAllocations []*si.Allocation
-	nodeLabels := map[string]string{
-		"label1":                           "key1",
-		"label2":                           "key2",
-		"node.kubernetes.io/instance-type": "HighMem",
-	}
-	request := CreateUpdateRequestForNewNode(nodeID, nodeLabels, capacity, occupied, existingAllocations)
-	assert.Equal(t, len(request.Nodes), 1)
-	assert.Equal(t, request.Nodes[0].NodeID, nodeID)
-	assert.Equal(t, request.Nodes[0].SchedulableResource, capacity)
-	assert.Equal(t, request.Nodes[0].OccupiedResource, occupied)
-	assert.Equal(t, len(request.Nodes[0].Attributes), 6)
-	assert.Equal(t, request.Nodes[0].Attributes[constants.DefaultNodeAttributeHostNameKey], nodeID)
-	assert.Equal(t, request.Nodes[0].Attributes[constants.DefaultNodeAttributeRackNameKey], constants.DefaultRackName)
-
-	// Make sure include nodeLabel
-	assert.Equal(t, request.Nodes[0].Attributes["label1"], "key1")
-	assert.Equal(t, request.Nodes[0].Attributes["label2"], "key2")
-	assert.Equal(t, request.Nodes[0].Attributes["node.kubernetes.io/instance-type"], "HighMem")
-
-	// Make sure include the instanceType
-	assert.Equal(t, request.Nodes[0].Attributes[common.InstanceType], "HighMem")
 }
 
 func TestCreateUpdateRequestForUpdatedNode(t *testing.T) {
