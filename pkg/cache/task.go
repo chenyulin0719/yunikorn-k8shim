@@ -292,40 +292,25 @@ func (task *Task) handleSubmitTaskEvent() {
 		AllowPreemptOther: task.isPreemptOtherAllowed(),
 	}
 
-	if utils.PodAlreadyBound(task.pod) {
-		// submit allocation
-		rr := common.CreateAllocationForTask(
-			task.applicationID,
-			task.taskID,
-			task.pod.Spec.NodeName,
-			task.resource,
-			task.placeholder,
-			task.taskGroupName,
-			task.pod,
-			task.originator,
-			preemptionPolicy)
-		log.Log(log.ShimCacheTask).Debug("send update request", zap.Stringer("request", rr))
-		if err := task.context.apiProvider.GetAPIs().SchedulerAPI.UpdateAllocation(rr); err != nil {
-			log.Log(log.ShimCacheTask).Debug("failed to send allocation to scheduler", zap.Error(err))
-			return
-		}
-	} else {
-		// submit allocation ask
-		rr := common.CreateAllocationRequestForTask(
-			task.applicationID,
-			task.taskID,
-			task.resource,
-			task.placeholder,
-			task.taskGroupName,
-			task.pod,
-			task.originator,
-			preemptionPolicy)
-		log.Log(log.ShimCacheTask).Debug("send update request", zap.Stringer("request", rr))
-		if err := task.context.apiProvider.GetAPIs().SchedulerAPI.UpdateAllocation(rr); err != nil {
-			log.Log(log.ShimCacheTask).Debug("failed to send scheduling request to scheduler", zap.Error(err))
-			return
-		}
+	// submit allocation ask
+	rr := common.CreateAllocationForTask(
+		task.applicationID,
+		task.taskID,
+		task.pod.Spec.NodeName,
+		task.resource,
+		task.placeholder,
+		task.taskGroupName,
+		task.pod,
+		task.originator,
+		preemptionPolicy)
+	log.Log(log.ShimCacheTask).Debug("send update request", zap.Stringer("request", rr))
+	if err := task.context.apiProvider.GetAPIs().SchedulerAPI.UpdateAllocation(rr); err != nil {
+		log.Log(log.ShimCacheTask).Debug("failed to send scheduling request to scheduler", zap.Error(err))
+		return
+	}
 
+	if !utils.PodAlreadyBound(task.pod) {
+		// if this is a new request, add events to pod
 		events.GetRecorder().Eventf(task.pod.DeepCopy(), nil, v1.EventTypeNormal, "Scheduling", "Scheduling",
 			"%s is queued and waiting for allocation", task.alias)
 		// if this task belongs to a task group, that means the app has gang scheduling enabled
@@ -497,7 +482,7 @@ func (task *Task) beforeTaskCompleted() {
 		"Task %s is completed", task.alias)
 }
 
-// releaseAllocation sends the release request for the Allocation or the AllocationAsk to the core.
+// releaseAllocation sends the release request for the Allocation to the core.
 func (task *Task) releaseAllocation() {
 	// scheduler api might be nil in some tests
 	if task.context.apiProvider.GetAPIs().SchedulerAPI != nil {
@@ -509,29 +494,33 @@ func (task *Task) releaseAllocation() {
 			zap.String("task", task.GetTaskState()),
 			zap.String("terminationType", task.terminationType))
 
-		// The message depends on current task state, generate requests accordingly.
-		// If allocated send an AllocationReleaseRequest,
-		// If not allocated yet send an AllocationAskReleaseRequest
+		// send an AllocationReleaseRequest
 		var releaseRequest *si.AllocationRequest
 		s := TaskStates()
-		switch task.GetTaskState() {
-		case s.New, s.Pending, s.Scheduling, s.Rejected:
-			releaseRequest = common.CreateReleaseRequestForTask(task.applicationID, task.taskID, task.allocationKey, task.application.partition, task.terminationType)
-		default:
+
+		// check if the task is in a state where it has not been allocated yet
+		if task.GetTaskState() != s.New && task.GetTaskState() != s.Pending &&
+			task.GetTaskState() != s.Scheduling && task.GetTaskState() != s.Rejected {
+			// task is in a state where it might have been allocated
 			if task.allocationKey == "" {
 				log.Log(log.ShimCacheTask).Warn("BUG: task allocationKey is empty on release",
 					zap.String("applicationID", task.applicationID),
 					zap.String("taskID", task.taskID),
 					zap.String("taskAlias", task.alias),
-					zap.String("task", task.GetTaskState()))
+					zap.String("taskState", task.GetTaskState()))
 			}
-			releaseRequest = common.CreateReleaseRequestForTask(
-				task.applicationID, task.taskID, task.allocationKey, task.application.partition, task.terminationType)
 		}
+
+		// create the release request
+		releaseRequest = common.CreateReleaseRequestForTask(
+			task.applicationID,
+			task.taskID,
+			task.application.partition,
+			task.terminationType,
+		)
 
 		if releaseRequest.Releases != nil {
 			log.Log(log.ShimCacheTask).Info("releasing allocations",
-				zap.Int("numOfAsksToRelease", len(releaseRequest.Releases.AllocationAsksToRelease)),
 				zap.Int("numOfAllocationsToRelease", len(releaseRequest.Releases.AllocationsToRelease)))
 		}
 		if err := task.context.apiProvider.GetAPIs().SchedulerAPI.UpdateAllocation(releaseRequest); err != nil {
